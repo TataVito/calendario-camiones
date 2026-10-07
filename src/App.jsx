@@ -194,6 +194,7 @@ function Principal({ sesion }) {
                 eventos={eventosDeObra}
                 obraActivaId={obraActivaId}
                 autenticado={autenticado}
+                esAdmin={sesion.esAdmin}
                 agregar={agregar}
                 actualizar={actualizar}
                 eliminar={eliminar}
@@ -204,6 +205,7 @@ function Principal({ sesion }) {
                 eventos={eventosDeObra}
                 obraActivaId={obraActivaId}
                 autenticado={autenticado}
+                esAdmin={sesion.esAdmin}
                 agregar={agregar}
                 actualizar={actualizar}
                 eliminar={eliminar}

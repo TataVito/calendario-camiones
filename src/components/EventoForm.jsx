@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button, Field, Input, Select, Textarea } from './ui.jsx';
 import Autoria from './Autoria.jsx';
+import { hoyISO } from '../lib/fechas.js';
 import { ESTADOS, FORMAS_DESCARGA, RECURSOS_SUGERIDOS, TIPOS, horaFin, tipoInfo } from '../lib/useEventos.js';
 
 const DURACIONES = [15, 30, 45, 60, 90, 120, 180];
@@ -24,7 +25,7 @@ function valoresIniciales(evento, fechaSugerida, horaSugerida, obraActivaId) {
   };
 }
 
-export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraActivaId, onGuardar, onCancelar, onEliminar, buscarConflictos }) {
+export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraActivaId, esAdmin, onGuardar, onCancelar, onEliminar, buscarConflictos }) {
   const [datos, setDatos] = useState(() => valoresIniciales(evento, fechaSugerida, horaSugerida, obraActivaId));
 
   function pedirBorrado() {
@@ -41,8 +42,14 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
     setDatos((d) => ({ ...d, [campo]: valor }));
   }
 
+  // Solo el admin agenda (o mueve) camiones a fechas pasadas; la base también lo impide.
+  const hoy = hoyISO();
+  const cambiaFecha = !evento || datos.fecha !== evento.fecha;
+  const fechaPasada = !esAdmin && cambiaFecha && datos.fecha < hoy;
+
   function submit(e) {
     e.preventDefault();
+    if (fechaPasada) return;
     onGuardar(datos);
   }
 
@@ -73,7 +80,7 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
 
       <div className="grid grid-cols-3 gap-3">
         <Field label="Fecha" required>
-          <Input type="date" value={datos.fecha} onChange={(e) => set('fecha', e.target.value)} required />
+          <Input type="date" value={datos.fecha} min={!esAdmin && cambiaFecha ? hoy : undefined} onChange={(e) => set('fecha', e.target.value)} required />
         </Field>
         <Field label="Hora de llegada" required>
           <Input type="time" value={datos.horaInicio} onChange={(e) => set('horaInicio', e.target.value)} required />
@@ -137,6 +144,17 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
         <Textarea rows={2} value={datos.observaciones} onChange={(e) => set('observaciones', e.target.value)} />
       </Field>
 
+      {fechaPasada && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          No se puede agendar un camión en una fecha anterior a hoy. Solo un administrador puede hacerlo.
+        </p>
+      )}
+      {!esAdmin && datos.estado === 'completado' && evento?.estado !== 'completado' && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Al guardarlo como <b>Completado</b> ya no podrás modificarlo ni eliminarlo; solo un administrador.
+        </p>
+      )}
+
       {evento && <Autoria evento={evento} />}
 
       <div className="flex items-center justify-between pt-2">
@@ -151,7 +169,7 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
           <Button type="button" variant="secondary" onClick={onCancelar}>
             Cancelar
           </Button>
-          <Button type="submit">{evento ? 'Guardar cambios' : 'Agendar camión'}</Button>
+          <Button type="submit" disabled={fechaPasada}>{evento ? 'Guardar cambios' : 'Agendar camión'}</Button>
         </div>
       </div>
     </form>

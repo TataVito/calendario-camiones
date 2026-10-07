@@ -12,7 +12,7 @@ function Dato({ label, valor }) {
   );
 }
 
-export default function EventoDetalle({ evento, onCerrar }) {
+export default function EventoDetalle({ evento, onCerrar, completado }) {
   const estado = estadoInfo(evento.estado);
   const esRecepcion = evento.tipo === 'recepcion';
 
@@ -37,8 +37,17 @@ export default function EventoDetalle({ evento, onCerrar }) {
       <Autoria evento={evento} />
 
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-        Tu usuario es de solo lectura. Para modificar o eliminar programaciones, pedile a un administrador el rol{' '}
-        <span className="font-medium text-gray-700">Editor</span>.
+        {completado ? (
+          <>
+            Este camión ya está <span className="font-medium text-gray-700">completado</span>: solo un administrador puede
+            modificarlo o eliminarlo.
+          </>
+        ) : (
+          <>
+            Tu usuario es de solo lectura. Para modificar o eliminar programaciones, pedile a un administrador el rol{' '}
+            <span className="font-medium text-gray-700">Editor</span>.
+          </>
+        )}
       </div>
 
       <div className="flex justify-end">

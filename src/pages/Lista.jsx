@@ -5,7 +5,7 @@ import EventoDetalle from '../components/EventoDetalle.jsx';
 import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
 import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 
-export default function Lista({ eventos, obraActivaId, autenticado, agregar, actualizar, eliminar, buscarConflictos }) {
+export default function Lista({ eventos, obraActivaId, autenticado, esAdmin, agregar, actualizar, eliminar, buscarConflictos }) {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [tipo, setTipo] = useState('');
@@ -31,6 +31,11 @@ export default function Lista({ eventos, obraActivaId, autenticado, agregar, act
   function hoy() {
     setDesde(hoyISO());
     setHasta(hoyISO());
+  }
+
+  // Completado: solo el admin lo puede modificar; los demás lo ven como detalle.
+  function soloLectura(evento) {
+    return !autenticado || (evento.estado === 'completado' && !esAdmin);
   }
 
   function guardar(datos) {
@@ -138,7 +143,7 @@ export default function Lista({ eventos, obraActivaId, autenticado, agregar, act
                   </td>
                   <td className="px-3 py-2 no-print">
                     <button className="text-sm text-[#C42B2B] hover:underline" onClick={() => setModal({ evento: ev })}>
-                      {autenticado ? 'Editar' : 'Ver'}
+                      {soloLectura(ev) ? 'Ver' : 'Editar'}
                     </button>
                   </td>
                 </tr>
@@ -158,17 +163,18 @@ export default function Lista({ eventos, obraActivaId, autenticado, agregar, act
       <Modal
         open={!!modal}
         onClose={() => setModal(null)}
-        title={modal?.evento ? (autenticado ? 'Editar camión agendado' : 'Detalle del camión') : 'Agendar nuevo camión'}
+        title={modal?.evento ? (soloLectura(modal.evento) ? 'Detalle del camión' : 'Editar camión agendado') : 'Agendar nuevo camión'}
         wide
       >
         {modal &&
-          (modal.evento && !autenticado ? (
-            <EventoDetalle evento={modal.evento} onCerrar={() => setModal(null)} />
+          (modal.evento && soloLectura(modal.evento) ? (
+            <EventoDetalle evento={modal.evento} onCerrar={() => setModal(null)} completado={autenticado} />
           ) : (
             <EventoForm
               evento={modal.evento}
               fechaSugerida={modal.fecha}
               obraActivaId={obraActivaId}
+              esAdmin={esAdmin}
               onGuardar={guardar}
               onCancelar={() => setModal(null)}
               onEliminar={borrar}

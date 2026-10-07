@@ -40,7 +40,7 @@ const PUNTO_TIPO = {
   despacho: 'bg-amber-500',
 };
 
-export default function Calendario({ eventos, obraActivaId, autenticado, agregar, actualizar, eliminar, buscarConflictos }) {
+export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, agregar, actualizar, eliminar, buscarConflictos }) {
   const [vista, setVista] = useState('semana'); // 'dia' | 'semana' | 'mes'
   const [diaReferencia, setDiaReferencia] = useState(hoyISO());
   const [semanaInicio, setSemanaInicio] = useState(() => inicioSemana(hoyISO()));
@@ -65,7 +65,14 @@ export default function Calendario({ eventos, obraActivaId, autenticado, agregar
 
   function abrirNuevo(fecha, horaAprox) {
     if (!autenticado) return;
+    // Solo el admin agenda en fechas pasadas (la base también lo impide).
+    if (!esAdmin && fecha < hoyISO()) return;
     setModal({ fecha, hora: horaAprox });
+  }
+
+  // Completado: solo el admin lo puede modificar; los demás lo ven como detalle.
+  function soloLectura(evento) {
+    return !autenticado || (evento.estado === 'completado' && !esAdmin);
   }
 
   function abrirExistente(evento) {
@@ -178,7 +185,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, agregar
             </button>
           </div>
           {autenticado && (
-            <Button onClick={() => abrirNuevo(vista === 'dia' ? diaReferencia : hoyISO(), '09:00')}>+ Nuevo camión</Button>
+            <Button onClick={() => abrirNuevo(vista === 'dia' && (esAdmin || diaReferencia >= hoyISO()) ? diaReferencia : hoyISO(), '09:00')}>+ Nuevo camión</Button>
           )}
         </div>
       </div>
@@ -401,18 +408,19 @@ export default function Calendario({ eventos, obraActivaId, autenticado, agregar
       <Modal
         open={!!modal}
         onClose={cerrar}
-        title={modal?.evento ? (autenticado ? 'Editar camión agendado' : 'Detalle del camión') : 'Agendar nuevo camión'}
+        title={modal?.evento ? (soloLectura(modal.evento) ? 'Detalle del camión' : 'Editar camión agendado') : 'Agendar nuevo camión'}
         wide
       >
         {modal &&
-          (modal.evento && !autenticado ? (
-            <EventoDetalle evento={modal.evento} onCerrar={cerrar} />
+          (modal.evento && soloLectura(modal.evento) ? (
+            <EventoDetalle evento={modal.evento} onCerrar={cerrar} completado={autenticado} />
           ) : (
             <EventoForm
               evento={modal.evento}
               fechaSugerida={modal.fecha}
               horaSugerida={modal.hora}
               obraActivaId={obraActivaId}
+              esAdmin={esAdmin}
               onGuardar={guardar}
               onCancelar={cerrar}
               onEliminar={borrar}
