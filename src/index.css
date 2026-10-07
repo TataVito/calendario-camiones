@@ -1,0 +1,15 @@
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: #f3f4f6;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
