@@ -1,4 +1,5 @@
 import { Button } from './ui.jsx';
+import Autoria from './Autoria.jsx';
 import { estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
 
 function Dato({ label, valor }) {
@@ -33,9 +34,11 @@ export default function EventoDetalle({ evento, onCerrar }) {
 
       {evento.observaciones && <Dato label="Observaciones" valor={evento.observaciones} />}
 
+      <Autoria evento={evento} />
+
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-        Solo podés ver esta programación. Para modificarla o eliminarla, iniciá sesión en la pestaña{' '}
-        <span className="font-medium text-gray-700">Administración</span>.
+        Tu usuario es de solo lectura. Para modificar o eliminar programaciones, pedile a un administrador el rol{' '}
+        <span className="font-medium text-gray-700">Editor</span>.
       </div>
 
       <div className="flex justify-end">

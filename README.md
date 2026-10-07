@@ -1,16 +1,39 @@
-# React + Vite
+# Calendario de Camiones — RVC
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Coordinación de recepciones y despachos de camiones por obra. React + Vite, datos y login en Supabase, sitio en GitHub Pages.
 
-Currently, two official plugins are available:
+## Seguridad
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Sin sesión no se ve nada**: la app muestra solo el login y la base rechaza cualquier consulta anónima (RLS).
+- **Roles** (tabla `perfiles`): `lector` solo ve · `editor` crea/edita/elimina obras y camiones · `admin` además gestiona usuarios.
+- Los permisos los impone **la base de datos** (políticas RLS), no la app: aunque alguien llame la API directamente, un lector no puede escribir.
+- **Registro público desactivado**: solo un admin crea usuarios, vía la Edge Function `admin-usuarios` (la única que usa la service role key, que nunca llega al navegador).
+- Claves cifradas por Supabase Auth, mínimo 8 caracteres, límite de intentos de login, sesiones con expiración.
+- Los usuarios entran con "usuario + clave"; internamente cada uno es `<usuario>@calendario-rvc.invalid` (dominio reservado que nadie puede registrar, así nadie puede recibir correos de recuperación).
+- Auditoría: cada camión guarda quién lo creó y quién lo modificó por última vez.
 
-## React Compiler
+## Puesta en marcha (una sola vez)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Crear proyecto** en https://supabase.com (región São Paulo).
+2. **SQL Editor** → pegar y ejecutar `supabase/migrations/20261007000000_esquema_inicial.sql`.
+3. **Authentication → Sign In / Providers**:
+   - Desactivar **Allow new users to sign up**.
+   - En Email: desactivar **Confirm email**; largo mínimo de clave: 8.
+4. **Edge Function** `admin-usuarios`: Edge Functions → Deploy a new function → Via Editor, nombre `admin-usuarios`, pegar `supabase/functions/admin-usuarios/index.ts`.
+   Opcional: en Edge Functions → Secrets, `ORIGENES_PERMITIDOS=https://<usuario>.github.io` (restringe CORS).
+5. **Primer admin**: Authentication → Users → Add user → email `<usuario>@calendario-rvc.invalid`, clave, marcar *Auto Confirm User*. Luego en SQL Editor:
+   ```sql
+   update public.perfiles set rol = 'admin' where usuario = '<usuario>';
+   ```
+6. **Configurar la app**: copiar `.env.example` a `.env.local` con la URL y la anon key (Project Settings → API).
 
-## Expanding the Oxlint configuration
+## Desarrollo
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```
+npm install
+npm run dev
+```
+
+## Publicar en GitHub Pages
+
+`npm run build` y publicar `dist/` (base relativa, funciona en cualquier ruta).

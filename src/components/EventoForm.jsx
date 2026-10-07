@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, Field, Input, Select, Textarea } from './ui.jsx';
+import Autoria from './Autoria.jsx';
 import { ESTADOS, FORMAS_DESCARGA, RECURSOS_SUGERIDOS, TIPOS, horaFin, tipoInfo } from '../lib/useEventos.js';
 
 const DURACIONES = [15, 30, 45, 60, 90, 120, 180];
@@ -135,6 +136,8 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
       <Field label="Observaciones">
         <Textarea rows={2} value={datos.observaciones} onChange={(e) => set('observaciones', e.target.value)} />
       </Field>
+
+      {evento && <Autoria evento={evento} />}
 
       <div className="flex items-center justify-between pt-2">
         <div>

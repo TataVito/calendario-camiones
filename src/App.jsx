@@ -6,7 +6,9 @@ import ObrasModal from './components/ObrasModal.jsx';
 import { Button, Card } from './components/ui.jsx';
 import { useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
 import { useObras } from './lib/useObras.js';
-import { useUsuarios } from './lib/useUsuarios.js';
+import { useSesion } from './lib/useSesion.js';
+import { configurado } from './lib/supabase.js';
+import Login from './pages/Login.jsx';
 import { hoyISO } from './lib/fechas.js';
 
 function minutosAhora() {
@@ -20,11 +22,38 @@ const TABS = [
   { value: 'administracion', label: 'Administración' },
 ];
 
+// Restos de la versión sin nube: usuarios con claves en texto plano. Se borran siempre.
+try {
+  localStorage.removeItem('rvc_calendario_usuarios_v1');
+  localStorage.removeItem('rvc_calendario_sesion_v1');
+} catch {
+  // sin almacenamiento local
+}
+
+function Centrado({ children }) {
+  return <div className="flex min-h-screen items-center justify-center px-4 text-sm text-gray-500">{children}</div>;
+}
+
 export default function App() {
-  const { eventos, agregar, actualizar, eliminar, eliminarPorObra, buscarConflictos } = useEventos();
-  const { obras, obraActivaId, setObraActivaId, obraActiva, agregarObra, actualizarObra, eliminarObra } = useObras();
-  const usuariosCtx = useUsuarios();
-  const { autenticado } = usuariosCtx;
+  if (!configurado) {
+    return <Centrado>Falta configurar Supabase (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).</Centrado>;
+  }
+  return <Puerta />;
+}
+
+// Nada del calendario se monta (ni se consulta) hasta tener sesión y perfil.
+function Puerta() {
+  const sesion = useSesion();
+  if (sesion.cargando) return <Centrado>Cargando…</Centrado>;
+  if (!sesion.conectado) return <Login login={sesion.login} />;
+  return <Principal sesion={sesion} />;
+}
+
+function Principal({ sesion }) {
+  const { eventos, agregar, actualizar, eliminar, buscarConflictos, recargar, error: errorEventos, limpiarError: limpiarErrorEventos } = useEventos();
+  const { obras, obraActivaId, setObraActivaId, obraActiva, agregarObra, actualizarObra, eliminarObra, error: errorObras, limpiarError: limpiarErrorObras } = useObras();
+  const autenticado = sesion.puedeEditar;
+  const error = errorEventos || errorObras;
   const [tab, setTab] = useState('calendario');
   const [modalObras, setModalObras] = useState(false);
 
@@ -42,9 +71,10 @@ export default function App() {
     return { recepciones, despachos, enProceso, proximo };
   }, [eventosDeObra]);
 
-  function manejarEliminarObra(id) {
-    eliminarPorObra(id);
-    eliminarObra(id);
+  // La base borra en cascada los camiones de la obra; se recargan para reflejarlo.
+  async function manejarEliminarObra(id) {
+    await eliminarObra(id);
+    await recargar();
   }
 
   return (
@@ -53,7 +83,7 @@ export default function App() {
         <div className="mx-auto max-w-7xl px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img src="/rvc.jpg" alt="RVC" className="h-10 w-10 rounded object-cover" />
+              <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-10 w-10 rounded object-cover" />
               <div>
                 <h1 className="text-xl font-bold text-[#C42B2B]">Calendario de Camiones</h1>
                 <p className="text-sm text-gray-500">Coordinación de recepciones y despachos — RVC Constructora</p>
@@ -97,8 +127,22 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-5">
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 no-print">
+            <span>No se pudo completar la operación: {error}</span>
+            <button
+              onClick={() => {
+                limpiarErrorEventos();
+                limpiarErrorObras();
+              }}
+              className="text-red-500 hover:text-red-700"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         {tab === 'administracion' ? (
-          <Administracion {...usuariosCtx} />
+          <Administracion {...sesion} obras={obras} />
         ) : obras.length === 0 ? (
           <Card className="mx-auto mt-10 max-w-md p-6 text-center">
             <h2 className="mb-2 text-lg font-semibold text-gray-800">Todavía no hay obras creadas</h2>
@@ -106,7 +150,7 @@ export default function App() {
               Esta app coordina los camiones de cada obra por separado.
               {autenticado
                 ? ' Empezá creando la primera obra de la constructora.'
-                : ' Un usuario autorizado debe iniciar sesión en la pestaña Administración para crear la primera obra.'}
+                : ' Un usuario con rol Editor o Admin debe crear la primera obra.'}
             </p>
             {autenticado && <Button onClick={() => setModalObras(true)}>+ Crear obra</Button>}
           </Card>

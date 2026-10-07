@@ -1,64 +1,93 @@
 import { useCallback, useEffect, useState } from 'react';
+import { supabase } from './supabase.js';
 
-const STORAGE_KEY = 'rvc_calendario_obras_v1';
+// La obra seleccionada es una preferencia de este navegador; las obras viven en Supabase.
 const ACTIVA_KEY = 'rvc_calendario_obra_activa_v1';
 
-function cargarObras() {
+function cargarActiva() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    return localStorage.getItem(ACTIVA_KEY) || '';
   } catch {
-    return [];
+    return '';
   }
 }
 
-function cargarActiva() {
-  return localStorage.getItem(ACTIVA_KEY) || '';
-}
-
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function aObra(fila) {
+  return { id: fila.id, nombre: fila.nombre, direccion: fila.direccion };
 }
 
 export function useObras() {
-  const [obras, setObras] = useState(cargarObras);
+  const [obras, setObras] = useState([]);
   const [obraActivaId, setObraActivaId] = useState(cargarActiva);
+  const [error, setError] = useState('');
+
+  const recargar = useCallback(async () => {
+    const { data, error } = await supabase.from('obras').select('id, nombre, direccion').order('creado_en');
+    if (error) setError(error.message);
+    else setObras(data.map(aObra));
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(obras));
-  }, [obras]);
+    recargar();
+    const canal = supabase
+      .channel('obras')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'obras' }, recargar)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
+  }, [recargar]);
 
   useEffect(() => {
-    localStorage.setItem(ACTIVA_KEY, obraActivaId || '');
+    try {
+      localStorage.setItem(ACTIVA_KEY, obraActivaId || '');
+    } catch {
+      // sin almacenamiento local: solo se pierde la preferencia
+    }
   }, [obraActivaId]);
 
   // Si la obra activa fue eliminada, o no hay ninguna seleccionada, cae a la primera disponible.
   useEffect(() => {
-    if (obras.length === 0) {
-      if (obraActivaId) setObraActivaId('');
-      return;
-    }
+    if (obras.length === 0) return;
     if (!obraActivaId || !obras.some((o) => o.id === obraActivaId)) {
       setObraActivaId(obras[0].id);
     }
   }, [obras, obraActivaId]);
 
-  const agregarObra = useCallback((datos) => {
-    const nueva = { id: uid(), ...datos };
-    setObras((prev) => [...prev, nueva]);
-    setObraActivaId(nueva.id);
-    return nueva;
-  }, []);
+  const agregarObra = useCallback(
+    async (datos) => {
+      const { data, error } = await supabase
+        .from('obras')
+        .insert({ nombre: datos.nombre, direccion: datos.direccion || '' })
+        .select('id, nombre, direccion')
+        .single();
+      if (error) return setError(error.message);
+      setObraActivaId(data.id);
+      await recargar();
+    },
+    [recargar],
+  );
 
-  const actualizarObra = useCallback((id, datos) => {
-    setObras((prev) => prev.map((o) => (o.id === id ? { ...o, ...datos } : o)));
-  }, []);
+  const actualizarObra = useCallback(
+    async (id, datos) => {
+      const { error } = await supabase.from('obras').update({ nombre: datos.nombre, direccion: datos.direccion || '' }).eq('id', id);
+      if (error) setError(error.message);
+      await recargar();
+    },
+    [recargar],
+  );
 
-  const eliminarObra = useCallback((id) => {
-    setObras((prev) => prev.filter((o) => o.id !== id));
-  }, []);
+  // Los eventos de la obra se borran en cascada en la base.
+  const eliminarObra = useCallback(
+    async (id) => {
+      const { error } = await supabase.from('obras').delete().eq('id', id);
+      if (error) setError(error.message);
+      await recargar();
+    },
+    [recargar],
+  );
 
   const obraActiva = obras.find((o) => o.id === obraActivaId) || null;
 
-  return { obras, obraActivaId, setObraActivaId, obraActiva, agregarObra, actualizarObra, eliminarObra };
+  return { obras, obraActivaId, setObraActivaId, obraActiva, agregarObra, actualizarObra, eliminarObra, error, limpiarError: () => setError('') };
 }

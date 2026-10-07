@@ -1,22 +1,40 @@
 import { useCallback, useEffect, useState } from 'react';
+import { supabase } from './supabase.js';
 
-const STORAGE_KEY = 'rvc_calendario_camiones_v1';
+// Columnas de la tabla public.eventos <-> campos que usa la UI.
+const CAMPOS = {
+  obraId: 'obra_id',
+  tipo: 'tipo',
+  fecha: 'fecha',
+  horaInicio: 'hora_inicio',
+  duracionMin: 'duracion_min',
+  guiaOC: 'guia_oc',
+  proveedorCliente: 'proveedor_cliente',
+  material: 'material',
+  formaDescarga: 'forma_descarga',
+  estado: 'estado',
+  observaciones: 'observaciones',
+};
 
-function cargar() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
+function aEvento(fila) {
+  const ev = {
+    id: fila.id,
+    creadoEn: fila.creado_en,
+    actualizadoEn: fila.actualizado_en,
+    creadoPorUsuario: fila.creado_por_usuario,
+    actualizadoPorUsuario: fila.actualizado_por_usuario,
+  };
+  for (const [campo, columna] of Object.entries(CAMPOS)) ev[campo] = fila[columna];
+  return ev;
+}
+
+function aFila(datos) {
+  const fila = {};
+  for (const [campo, columna] of Object.entries(CAMPOS)) {
+    if (datos[campo] !== undefined) fila[columna] = datos[campo];
   }
-}
-
-function guardar(eventos) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(eventos));
-}
-
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  if (fila.duracion_min !== undefined) fila.duracion_min = Number(fila.duracion_min);
+  return fila;
 }
 
 export const ESTADOS = [
@@ -85,32 +103,52 @@ function seSolapan(aInicio, aFin, bInicio, bFin) {
 }
 
 export function useEventos() {
-  const [eventos, setEventos] = useState(cargar);
+  const [eventos, setEventos] = useState([]);
+  const [error, setError] = useState('');
+
+  const recargar = useCallback(async () => {
+    const { data, error } = await supabase.from('eventos').select('*').order('fecha').order('hora_inicio');
+    if (error) setError(error.message);
+    else setEventos(data.map(aEvento));
+  }, []);
 
   useEffect(() => {
-    guardar(eventos);
-  }, [eventos]);
+    recargar();
+    const canal = supabase
+      .channel('eventos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos' }, recargar)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
+  }, [recargar]);
 
-  const agregar = useCallback((datos) => {
-    const ahora = new Date().toISOString();
-    const nuevo = { id: uid(), estado: 'programado', creadoEn: ahora, actualizadoEn: ahora, ...datos };
-    setEventos((prev) => [...prev, nuevo]);
-    return nuevo;
-  }, []);
+  const agregar = useCallback(
+    async (datos) => {
+      const { error } = await supabase.from('eventos').insert({ estado: 'programado', ...aFila(datos) });
+      if (error) setError(error.message);
+      await recargar();
+    },
+    [recargar],
+  );
 
-  const actualizar = useCallback((id, datos) => {
-    setEventos((prev) =>
-      prev.map((ev) => (ev.id === id ? { ...ev, ...datos, actualizadoEn: new Date().toISOString() } : ev)),
-    );
-  }, []);
+  const actualizar = useCallback(
+    async (id, datos) => {
+      const { error } = await supabase.from('eventos').update(aFila(datos)).eq('id', id);
+      if (error) setError(error.message);
+      await recargar();
+    },
+    [recargar],
+  );
 
-  const eliminar = useCallback((id) => {
-    setEventos((prev) => prev.filter((ev) => ev.id !== id));
-  }, []);
-
-  const eliminarPorObra = useCallback((obraId) => {
-    setEventos((prev) => prev.filter((ev) => ev.obraId !== obraId));
-  }, []);
+  const eliminar = useCallback(
+    async (id) => {
+      const { error } = await supabase.from('eventos').delete().eq('id', id);
+      if (error) setError(error.message);
+      await recargar();
+    },
+    [recargar],
+  );
 
   const buscarConflictos = useCallback(
     (candidato, excluirId) => {
@@ -127,5 +165,5 @@ export function useEventos() {
     [eventos],
   );
 
-  return { eventos, agregar, actualizar, eliminar, eliminarPorObra, buscarConflictos };
+  return { eventos, agregar, actualizar, eliminar, buscarConflictos, recargar, error, limpiarError: () => setError('') };
 }
