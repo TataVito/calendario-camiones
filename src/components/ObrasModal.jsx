@@ -33,7 +33,8 @@ function FormularioObra({ obra, onGuardar, onCancelar }) {
   );
 }
 
-export default function ObrasModal({ open, onClose, obras, obraActivaId, setObraActivaId, agregarObra, actualizarObra, eliminarObra }) {
+// Crear y eliminar obras: solo el súper usuario. El admin de obra solo edita las suyas.
+export default function ObrasModal({ open, onClose, obras, obraActivaId, setObraActivaId, agregarObra, actualizarObra, eliminarObra, puedeCrearEliminar }) {
   const [editandoId, setEditandoId] = useState(null);
   const [creando, setCreando] = useState(false);
 
@@ -78,15 +79,17 @@ export default function ObrasModal({ open, onClose, obras, obraActivaId, setObra
                 <Button variant="ghost" onClick={() => setEditandoId(obra.id)}>
                   Editar
                 </Button>
-                <Button variant="danger" onClick={() => eliminar(obra)}>
-                  Eliminar
-                </Button>
+                {puedeCrearEliminar && (
+                  <Button variant="danger" onClick={() => eliminar(obra)}>
+                    Eliminar
+                  </Button>
+                )}
               </div>
             </div>
           ),
         )}
 
-        {creando ? (
+        {!puedeCrearEliminar ? null : creando ? (
           <FormularioObra
             onCancelar={() => setCreando(false)}
             onGuardar={(datos) => {

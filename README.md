@@ -5,9 +5,9 @@ Coordinación de recepciones y despachos de camiones por obra. React + Vite, dat
 ## Seguridad
 
 - **Sin sesión no se ve nada**: la app muestra solo el login y la base rechaza cualquier consulta anónima (RLS).
-- **Roles** (tabla `perfiles`): `lector` solo ve · `porteria` registra llegada / inicio / salida (con hora real) y sube fotos de guías · `editor` crea/edita/elimina obras y camiones · `admin` además gestiona usuarios y puede saltarse las reglas.
-- **Permisos por obra** (`obra_usuarios`): cada usuario ve solo las obras que el admin le asignó; el admin ve todas.
-- **Reglas**: solo el admin agenda en fechas pasadas y modifica/elimina camiones completados. Las horas reales solo las fija la función `marcar_porteria`.
+- **Roles** (tabla `perfiles`): `lector` solo ve · `porteria` registra llegada / inicio / salida (con hora real) y sube fotos de guías · `editor` crea/edita/elimina camiones · `admin` (de obra) en sus obras edita la obra, se salta las reglas, ve el historial y gestiona lectores/portería/editores · `superusuario` ve y hace todo, y es el único que crea/elimina obras y crea admins.
+- **Permisos por obra** (`obra_usuarios`): cada usuario (admin incluido) ve solo las obras asignadas; el súper usuario ve todas.
+- **Reglas**: solo admin y súper usuario agendan en fechas pasadas y modifica/elimina camiones completados. Las horas reales solo las fija la función `marcar_porteria`.
 - **Fotos de guías**: bucket privado `guias` (solo imágenes, máx. 5 MB, ruta `<obra>/<camión>/<archivo>`), visibles solo con acceso a la obra mediante enlaces firmados de 1 hora.
 - Los permisos los impone **la base de datos** (políticas RLS), no la app: aunque alguien llame la API directamente, un lector no puede escribir.
 - **Registro público desactivado**: solo un admin crea usuarios, vía la Edge Function `admin-usuarios` (la única que usa la service role key, que nunca llega al navegador).

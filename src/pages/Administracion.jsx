@@ -9,10 +9,14 @@ const ROLES = [
   { value: 'lector', label: 'Lector — solo ve' },
   { value: 'porteria', label: 'Portería — registra llegadas, salidas y fotos' },
   { value: 'editor', label: 'Editor — agenda camiones y obras' },
-  { value: 'admin', label: 'Admin — además gestiona usuarios' },
+  { value: 'admin', label: 'Admin de obra — sus obras: usuarios, historial y reglas' },
+  { value: 'superusuario', label: 'Súper usuario — ve y administra todo' },
 ];
 
 const CLAVE_MIN = 8;
+
+// Roles que puede asignar y administrar un admin de obra.
+const ROLES_ADMIN_OBRA = ['lector', 'porteria', 'editor'];
 
 // Claves del almacenamiento local de la versión anterior (sin nube).
 const LEGADO = {
@@ -38,7 +42,7 @@ function rolLabel(rol) {
   return ROLES.find((r) => r.value === rol)?.label.split(' — ')[0] || rol;
 }
 
-function FormularioUsuario({ usuario, esUnoMismo, obras, obrasAsignadas, onGuardar, onCancelar }) {
+function FormularioUsuario({ usuario, esUnoMismo, esSuper, obras, obrasAsignadas, onGuardar, onCancelar }) {
   const [nombreUsuario, setNombreUsuario] = useState('');
   const [nombre, setNombre] = useState(usuario?.nombre || '');
   const [clave, setClave] = useState('');
@@ -100,7 +104,7 @@ function FormularioUsuario({ usuario, esUnoMismo, obras, obrasAsignadas, onGuard
         </Field>
         <Field label="Rol" required hint={esUnoMismo ? 'No podés cambiar tu propio rol.' : undefined}>
           <Select value={rol} onChange={(e) => setRol(e.target.value)} disabled={esUnoMismo}>
-            {ROLES.map((r) => (
+            {ROLES.filter((r) => esSuper || ROLES_ADMIN_OBRA.includes(r.value) || r.value === rol).map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
@@ -108,12 +112,12 @@ function FormularioUsuario({ usuario, esUnoMismo, obras, obrasAsignadas, onGuard
           </Select>
         </Field>
       </div>
-      {rol === 'admin' ? (
-        <p className="text-xs text-gray-500">El administrador ve todas las obras.</p>
-      ) : (
+      {rol === 'superusuario' ? (
+        <p className="text-xs text-gray-500">El súper usuario ve todas las obras.</p>
+      ) : esUnoMismo ? null : (
         <div>
           <div className="mb-1 flex items-center justify-between text-sm font-medium text-gray-700">
-            <span>Obras que puede ver ({seleccion.size})</span>
+            <span>{esSuper ? 'Obras que puede ver' : 'Tus obras en las que trabaja'} ({seleccion.size})</span>
             {obras.length > 1 && (
               <button
                 type="button"
@@ -149,7 +153,7 @@ function FormularioUsuario({ usuario, esUnoMismo, obras, obrasAsignadas, onGuard
   );
 }
 
-function GestionUsuarios({ perfil, obras }) {
+function GestionUsuarios({ perfil, obras, esSuper }) {
   const [usuarios, setUsuarios] = useState([]);
   const [asignaciones, setAsignaciones] = useState({});
   const [editandoId, setEditandoId] = useState(null);
@@ -196,6 +200,7 @@ function GestionUsuarios({ perfil, obras }) {
               key={u.id}
               usuario={u}
               esUnoMismo={u.id === perfil.id}
+              esSuper={esSuper}
               obras={obras}
               obrasAsignadas={asignaciones[u.id]}
               onCancelar={() => setEditandoId(null)}
@@ -212,7 +217,11 @@ function GestionUsuarios({ perfil, obras }) {
                 {u.nombre && <span className="ml-2 text-gray-500">{u.nombre}</span>}
                 <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{rolLabel(u.rol)}</span>
                 <span className="ml-2 text-xs text-gray-400">
-                  {u.rol === 'admin' ? 'todas las obras' : `${(asignaciones[u.id] || []).length} de ${obras.length} obras`}
+                  {u.rol === 'superusuario'
+                    ? 'todas las obras'
+                    : esSuper
+                      ? `${(asignaciones[u.id] || []).length} de ${obras.length} obras`
+                      : `${(asignaciones[u.id] || []).length} de tus ${obras.length} obras`}
                 </span>
                 {u.id === perfil.id && <span className="ml-2 text-xs text-gray-400">(tú)</span>}
               </div>
@@ -228,12 +237,16 @@ function GestionUsuarios({ perfil, obras }) {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" onClick={() => setEditandoId(u.id)}>
-                    Editar
-                  </Button>
-                  <Button variant="danger" onClick={() => setConfirmandoId(u.id)} disabled={u.id === perfil.id}>
-                    Eliminar
-                  </Button>
+                  {(esSuper || u.id === perfil.id || ROLES_ADMIN_OBRA.includes(u.rol)) && (
+                    <Button variant="ghost" onClick={() => setEditandoId(u.id)}>
+                      Editar
+                    </Button>
+                  )}
+                  {(esSuper || ROLES_ADMIN_OBRA.includes(u.rol)) && (
+                    <Button variant="danger" onClick={() => setConfirmandoId(u.id)} disabled={u.id === perfil.id}>
+                      Eliminar
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -242,6 +255,7 @@ function GestionUsuarios({ perfil, obras }) {
 
         {creando ? (
           <FormularioUsuario
+            esSuper={esSuper}
             obras={obras}
             obrasAsignadas={obras.length === 1 ? [obras[0].id] : []}
             onCancelar={() => setCreando(false)}
@@ -431,7 +445,7 @@ function ImportarLegado({ alTerminar }) {
   );
 }
 
-export default function Administracion({ perfil, esAdmin, puedeEditar, logout, obras }) {
+export default function Administracion({ perfil, esAdmin, esSuper, logout, obras }) {
   const [seccion, setSeccion] = useState('usuarios');
   return (
     <div className={`mx-auto space-y-4 ${seccion === 'historial' ? 'max-w-5xl' : 'max-w-2xl'}`}>
@@ -448,7 +462,7 @@ export default function Administracion({ perfil, esAdmin, puedeEditar, logout, o
 
       <MiCuenta perfil={perfil} />
 
-      {puedeEditar && <ImportarLegado />}
+      {esSuper && <ImportarLegado />}
 
       {esAdmin ? (
         <>
@@ -456,7 +470,7 @@ export default function Administracion({ perfil, esAdmin, puedeEditar, logout, o
             {[
               ['usuarios', 'Usuarios'],
               ['historial', 'Historial de cambios'],
-              ['respaldo', 'Respaldo'],
+              ...(esSuper ? [['respaldo', 'Respaldo']] : []),
             ].map(([valor, label]) => (
               <button
                 key={valor}
@@ -467,12 +481,12 @@ export default function Administracion({ perfil, esAdmin, puedeEditar, logout, o
               </button>
             ))}
           </nav>
-          {seccion === 'usuarios' && <GestionUsuarios perfil={perfil} obras={obras} />}
+          {seccion === 'usuarios' && <GestionUsuarios perfil={perfil} obras={obras} esSuper={esSuper} />}
           {seccion === 'historial' && <Historial obras={obras} />}
-          {seccion === 'respaldo' && <Respaldo />}
+          {seccion === 'respaldo' && esSuper && <Respaldo />}
         </>
       ) : (
-        <Card className="p-4 text-sm text-gray-500">La gestión de usuarios y obras asignadas es solo para administradores.</Card>
+        <Card className="p-4 text-sm text-gray-500">La gestión de usuarios y el historial son para los administradores.</Card>
       )}
     </div>
   );

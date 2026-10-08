@@ -21,7 +21,7 @@ function minutosAhora() {
 const TABS = [
   { value: 'calendario', label: 'Calendario' },
   { value: 'lista', label: 'Lista / Imprimir' },
-  { value: 'porteria', label: 'Portería', roles: ['porteria', 'editor', 'admin'] },
+  { value: 'porteria', label: 'Portería', roles: ['porteria', 'editor', 'admin', 'superusuario'] },
   { value: 'reportes', label: 'Reportes' },
   { value: 'administracion', label: 'Administración' },
 ];
@@ -116,7 +116,7 @@ function Principal({ sesion }) {
                   ))}
                 </select>
               )}
-              {autenticado && (
+              {(sesion.esSuper || (sesion.esAdmin && obras.length > 0)) && (
                 <Button variant="secondary" onClick={() => setModalObras(true)}>
                   {obras.length > 0 ? 'Gestionar obras' : '+ Crear obra'}
                 </Button>
@@ -157,13 +157,13 @@ function Principal({ sesion }) {
           <Administracion {...sesion} obras={obras} />
         ) : obras.length === 0 ? (
           <Card className="mx-auto mt-10 max-w-md p-6 text-center">
-            <h2 className="mb-2 text-lg font-semibold text-gray-800">{autenticado ? 'Todavía no hay obras' : 'No tenés obras asignadas'}</h2>
+            <h2 className="mb-2 text-lg font-semibold text-gray-800">{sesion.esSuper ? 'Todavía no hay obras' : 'No tenés obras asignadas'}</h2>
             <p className="mb-4 text-sm text-gray-500">
-              {autenticado
+              {sesion.esSuper
                 ? 'Esta app coordina los camiones de cada obra por separado. Empezá creando una obra.'
                 : 'Pedile a un administrador que te asigne las obras que tenés que ver.'}
             </p>
-            {autenticado && <Button onClick={() => setModalObras(true)}>+ Crear obra</Button>}
+            {sesion.esSuper && <Button onClick={() => setModalObras(true)}>+ Crear obra</Button>}
           </Card>
         ) : (
           <>
@@ -241,9 +241,10 @@ function Principal({ sesion }) {
         )}
       </main>
 
-      {autenticado && (
+      {sesion.esAdmin && (
         <ObrasModal
           open={modalObras}
+          puedeCrearEliminar={sesion.esSuper}
           onClose={() => setModalObras(false)}
           obras={obras}
           obraActivaId={obraActivaId}

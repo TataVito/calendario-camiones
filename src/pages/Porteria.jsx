@@ -140,7 +140,7 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
           ahora={ahora}
           marcar={puedeMarcar ? marcarPorteria : null}
           puedeSubirFotos={puedeMarcar}
-          puedeBorrarFotos={rol === 'editor' || rol === 'admin'}
+          puedeBorrarFotos={['editor', 'admin', 'superusuario'].includes(rol)}
         />
       ))}
 
@@ -157,7 +157,7 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
             ahora={ahora}
             marcar={null}
             puedeSubirFotos={puedeMarcar}
-            puedeBorrarFotos={rol === 'admin'}
+            puedeBorrarFotos={rol === 'admin' || rol === 'superusuario'}
           />
         ))}
     </div>

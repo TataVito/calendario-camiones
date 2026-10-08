@@ -57,9 +57,11 @@ export function useSesion() {
     conectado: Boolean(sesion && perfil),
     perfil,
     rol,
-    puedeEditar: rol === 'editor' || rol === 'admin',
-    puedePorteria: rol === 'porteria' || rol === 'editor' || rol === 'admin',
-    esAdmin: rol === 'admin',
+    puedeEditar: ['editor', 'admin', 'superusuario'].includes(rol),
+    puedePorteria: ['porteria', 'editor', 'admin', 'superusuario'].includes(rol),
+    // esAdmin: administrador (de obra o súper): se salta reglas, gestiona usuarios y ve el historial.
+    esAdmin: rol === 'admin' || rol === 'superusuario',
+    esSuper: rol === 'superusuario',
     login,
     logout,
   };
