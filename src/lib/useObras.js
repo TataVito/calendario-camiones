@@ -56,14 +56,13 @@ export function useObras() {
 
   const agregarObra = useCallback(
     async (datos) => {
-      const { data, error } = await supabase
-        .from('obras')
-        .insert({ nombre: datos.nombre, direccion: datos.direccion || '' })
-        .select('id, nombre, direccion')
-        .single();
+      // El id se genera aquí: la asignación de la obra a su creador ocurre después del insert,
+      // así que no se puede pedir la fila de vuelta en la misma operación.
+      const id = crypto.randomUUID();
+      const { error } = await supabase.from('obras').insert({ id, nombre: datos.nombre, direccion: datos.direccion || '' });
       if (error) return setError(error.message);
-      setObraActivaId(data.id);
       await recargar();
+      setObraActivaId(id);
     },
     [recargar],
   );

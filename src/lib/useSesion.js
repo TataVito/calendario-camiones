@@ -58,6 +58,7 @@ export function useSesion() {
     perfil,
     rol,
     puedeEditar: rol === 'editor' || rol === 'admin',
+    puedePorteria: rol === 'porteria' || rol === 'editor' || rol === 'admin',
     esAdmin: rol === 'admin',
     login,
     logout,

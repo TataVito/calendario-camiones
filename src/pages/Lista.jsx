@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Field, Input, Modal, Select } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
@@ -6,7 +6,7 @@ import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from
 import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 import { exportarExcel } from '../lib/exportarExcel.js';
 
-export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, agregar, actualizar, eliminar, buscarConflictos }) {
+export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, onRango, agregar, actualizar, eliminar, buscarConflictos }) {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [tipo, setTipo] = useState('');
@@ -14,6 +14,11 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState(null);
   const [exportando, setExportando] = useState(false);
+
+  // Solo se cargan los camiones del rango filtrado.
+  useEffect(() => {
+    onRango?.({ desde, hasta });
+  }, [desde, hasta, onRango]);
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -184,7 +189,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
       >
         {modal &&
           (modal.evento && soloLectura(modal.evento) ? (
-            <EventoDetalle evento={modal.evento} onCerrar={() => setModal(null)} completado={autenticado} />
+            <EventoDetalle evento={modal.evento} onCerrar={() => setModal(null)} completado={autenticado} puedeSubirFotos={autenticado} />
           ) : (
             <EventoForm
               evento={modal.evento}

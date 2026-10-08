@@ -10,7 +10,7 @@ export function accionInfo(value) {
   return ACCIONES.find((a) => a.value === value) || ACCIONES[1];
 }
 
-export const TABLAS = { eventos: 'Camión', obras: 'Obra', usuarios: 'Usuario' };
+export const TABLAS = { eventos: 'Camión', obras: 'Obra', usuarios: 'Usuario', evento_fotos: 'Foto' };
 
 // Columnas que se muestran en los cambios, con su etiqueta y cómo presentar el valor.
 const COLUMNAS = {
@@ -30,6 +30,11 @@ const COLUMNAS = {
   usuario: { label: 'Usuario' },
   rol: { label: 'Rol' },
   clave: { label: 'Clave' },
+  obras: { label: 'Obras' },
+  llegada_real: { label: 'Llegada real', fmt: (v) => fechaHora(v) },
+  inicio_proceso_real: { label: 'Inicio descarga real', fmt: (v) => fechaHora(v) },
+  salida_real: { label: 'Salida real', fmt: (v) => fechaHora(v) },
+  ruta: { label: 'Archivo', fmt: (v) => v.split('/').pop() },
 };
 
 function fmt(col, v) {
@@ -40,7 +45,11 @@ function fmt(col, v) {
 // Lista de { campo, antes, despues } legibles. En crear/eliminar, los datos del registro.
 export function cambios(entrada, nombreObra = (id) => id) {
   const { antes, despues, accion } = entrada;
-  const valor = (col, v) => (col === 'obra_id' ? nombreObra(v) : fmt(col, v));
+  const valor = (col, v) => {
+    if (col === 'obra_id') return nombreObra(v);
+    if (col === 'obras') return Array.isArray(v) && v.length ? v.map(nombreObra).join(', ') : '—';
+    return fmt(col, v);
+  };
   if (accion === 'modificar') {
     return Object.keys(COLUMNAS)
       .filter((col) => antes && despues && col in despues && JSON.stringify(antes[col]) !== JSON.stringify(despues[col]))
@@ -60,6 +69,7 @@ export function resumen(entrada) {
     return `${tipoInfo(f.tipo).label} ${f.fecha} ${f.hora_inicio}${detalle ? ` · ${detalle}` : ''}`;
   }
   if (entrada.tabla === 'obras') return f.nombre || '';
+  if (entrada.tabla === 'evento_fotos') return `Foto de guía (${f.subido_por_usuario || '—'})`;
   return f.usuario || '';
 }
 

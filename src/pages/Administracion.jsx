@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Field, Input, Select } from '../components/ui.jsx';
 import { supabase } from '../lib/supabase.js';
 import Historial from './Historial.jsx';
+import { correoDeUsuario } from '../lib/supabase.js';
+import { descargarRespaldo } from '../lib/respaldo.js';
 
 const ROLES = [
   { value: 'lector', label: 'Lector — solo ve' },
+  { value: 'porteria', label: 'Portería — registra llegadas, salidas y fotos' },
   { value: 'editor', label: 'Editor — agenda camiones y obras' },
   { value: 'admin', label: 'Admin — además gestiona usuarios' },
 ];
@@ -35,11 +38,19 @@ function rolLabel(rol) {
   return ROLES.find((r) => r.value === rol)?.label.split(' — ')[0] || rol;
 }
 
-function FormularioUsuario({ usuario, esUnoMismo, onGuardar, onCancelar }) {
+function FormularioUsuario({ usuario, esUnoMismo, obras, obrasAsignadas, onGuardar, onCancelar }) {
   const [nombreUsuario, setNombreUsuario] = useState('');
   const [nombre, setNombre] = useState(usuario?.nombre || '');
   const [clave, setClave] = useState('');
   const [rol, setRol] = useState(usuario?.rol || 'lector');
+  const [seleccion, setSeleccion] = useState(() => new Set(obrasAsignadas || []));
+  const alternar = (id) =>
+    setSeleccion((prev) => {
+      const nueva = new Set(prev);
+      if (nueva.has(id)) nueva.delete(id);
+      else nueva.add(id);
+      return nueva;
+    });
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -54,7 +65,7 @@ function FormularioUsuario({ usuario, esUnoMismo, onGuardar, onCancelar }) {
     setEnviando(true);
     setError('');
     try {
-      await onGuardar({ usuario: nombreUsuario.trim().toLowerCase(), nombre: nombre.trim(), clave, rol });
+      await onGuardar({ usuario: nombreUsuario.trim().toLowerCase(), nombre: nombre.trim(), clave, rol, obras: [...seleccion] });
     } catch (err) {
       setError(err.message);
       setEnviando(false);
@@ -97,6 +108,34 @@ function FormularioUsuario({ usuario, esUnoMismo, onGuardar, onCancelar }) {
           </Select>
         </Field>
       </div>
+      {rol === 'admin' ? (
+        <p className="text-xs text-gray-500">El administrador ve todas las obras.</p>
+      ) : (
+        <div>
+          <div className="mb-1 flex items-center justify-between text-sm font-medium text-gray-700">
+            <span>Obras que puede ver ({seleccion.size})</span>
+            {obras.length > 1 && (
+              <button
+                type="button"
+                className="text-xs text-[#C42B2B] hover:underline"
+                onClick={() => setSeleccion(new Set(seleccion.size === obras.length ? [] : obras.map((o) => o.id)))}
+              >
+                {seleccion.size === obras.length ? 'Ninguna' : 'Todas'}
+              </button>
+            )}
+          </div>
+          <div className="grid max-h-40 grid-cols-1 gap-1 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 sm:grid-cols-2">
+            {obras.map((o) => (
+              <label key={o.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={seleccion.has(o.id)} onChange={() => alternar(o.id)} />
+                {o.nombre}
+              </label>
+            ))}
+            {obras.length === 0 && <span className="text-xs text-gray-400">No hay obras creadas.</span>}
+          </div>
+          {seleccion.size === 0 && <p className="mt-1 text-xs text-amber-700">Sin obras asignadas no verá ningún camión.</p>}
+        </div>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancelar}>
@@ -110,8 +149,9 @@ function FormularioUsuario({ usuario, esUnoMismo, onGuardar, onCancelar }) {
   );
 }
 
-function GestionUsuarios({ perfil }) {
+function GestionUsuarios({ perfil, obras }) {
   const [usuarios, setUsuarios] = useState([]);
+  const [asignaciones, setAsignaciones] = useState({});
   const [editandoId, setEditandoId] = useState(null);
   const [creando, setCreando] = useState(false);
   const [confirmandoId, setConfirmandoId] = useState(null);
@@ -119,9 +159,15 @@ function GestionUsuarios({ perfil }) {
 
   // RLS deja al admin leer todos los perfiles directamente.
   const recargar = useCallback(async () => {
-    const { data, error } = await supabase.from('perfiles').select('id, usuario, nombre, rol').order('usuario');
-    if (error) setError(error.message);
-    else setUsuarios(data);
+    const [{ data, error }, { data: asig }] = await Promise.all([
+      supabase.from('perfiles').select('id, usuario, nombre, rol').order('usuario'),
+      supabase.from('obra_usuarios').select('obra_id, usuario_id'),
+    ]);
+    if (error) return setError(error.message);
+    setUsuarios(data);
+    const mapa = {};
+    for (const a of asig || []) (mapa[a.usuario_id] ||= []).push(a.obra_id);
+    setAsignaciones(mapa);
   }, []);
 
   useEffect(() => {
@@ -150,9 +196,11 @@ function GestionUsuarios({ perfil }) {
               key={u.id}
               usuario={u}
               esUnoMismo={u.id === perfil.id}
+              obras={obras}
+              obrasAsignadas={asignaciones[u.id]}
               onCancelar={() => setEditandoId(null)}
-              onGuardar={async ({ nombre, clave, rol }) => {
-                await llamarAdmin({ accion: 'actualizar', id: u.id, nombre, rol, ...(clave ? { clave } : {}) });
+              onGuardar={async ({ nombre, clave, rol, obras: obrasElegidas }) => {
+                await llamarAdmin({ accion: 'actualizar', id: u.id, nombre, rol, obras: obrasElegidas, ...(clave ? { clave } : {}) });
                 setEditandoId(null);
                 await recargar();
               }}
@@ -163,6 +211,9 @@ function GestionUsuarios({ perfil }) {
                 <span className="font-medium text-gray-900">{u.usuario}</span>
                 {u.nombre && <span className="ml-2 text-gray-500">{u.nombre}</span>}
                 <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{rolLabel(u.rol)}</span>
+                <span className="ml-2 text-xs text-gray-400">
+                  {u.rol === 'admin' ? 'todas las obras' : `${(asignaciones[u.id] || []).length} de ${obras.length} obras`}
+                </span>
                 {u.id === perfil.id && <span className="ml-2 text-xs text-gray-400">(tú)</span>}
               </div>
               {confirmandoId === u.id ? (
@@ -191,6 +242,8 @@ function GestionUsuarios({ perfil }) {
 
         {creando ? (
           <FormularioUsuario
+            obras={obras}
+            obrasAsignadas={obras.length === 1 ? [obras[0].id] : []}
             onCancelar={() => setCreando(false)}
             onGuardar={async (datos) => {
               await llamarAdmin({ accion: 'crear', ...datos });
@@ -203,6 +256,109 @@ function GestionUsuarios({ perfil }) {
             + Nuevo usuario
           </Button>
         )}
+      </div>
+    </Card>
+  );
+}
+
+function MiCuenta({ perfil }) {
+  const [abierto, setAbierto] = useState(false);
+  const [actual, setActual] = useState('');
+  const [nueva, setNueva] = useState('');
+  const [repetida, setRepetida] = useState('');
+  const [mensaje, setMensaje] = useState(null);
+  const [enviando, setEnviando] = useState(false);
+
+  async function cambiar(e) {
+    e.preventDefault();
+    if (nueva.length < CLAVE_MIN) return setMensaje({ error: true, texto: `La clave nueva debe tener al menos ${CLAVE_MIN} caracteres.` });
+    if (nueva !== repetida) return setMensaje({ error: true, texto: 'Las claves nuevas no coinciden.' });
+    if (nueva === actual) return setMensaje({ error: true, texto: 'La clave nueva debe ser distinta de la actual.' });
+    setEnviando(true);
+    // Se confirma la clave actual: quien encuentre la sesión abierta no puede cambiarla.
+    const { error: e1 } = await supabase.auth.signInWithPassword({ email: correoDeUsuario(perfil.usuario), password: actual });
+    if (e1) {
+      setEnviando(false);
+      return setMensaje({ error: true, texto: 'La clave actual no es correcta.' });
+    }
+    const { error: e2 } = await supabase.auth.updateUser({ password: nueva });
+    if (!e2) await supabase.rpc('registrar_cambio_clave_propia');
+    setEnviando(false);
+    if (e2) return setMensaje({ error: true, texto: e2.message });
+    setActual('');
+    setNueva('');
+    setRepetida('');
+    setMensaje({ error: false, texto: 'Listo, tu clave fue cambiada.' });
+  }
+
+  function cerrar() {
+    setAbierto(false);
+    setMensaje(null);
+  }
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-gray-800">Mi cuenta</h2>
+        {!abierto && (
+          <Button variant="secondary" onClick={() => setAbierto(true)}>
+            Cambiar mi clave
+          </Button>
+        )}
+      </div>
+      {abierto && (
+        <form onSubmit={cambiar} className="mt-3 space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field label="Clave actual" required>
+              <Input type="password" value={actual} onChange={(e) => setActual(e.target.value)} autoComplete="current-password" required />
+            </Field>
+            <Field label="Clave nueva" required hint={`Mínimo ${CLAVE_MIN} caracteres.`}>
+              <Input type="password" value={nueva} onChange={(e) => setNueva(e.target.value)} autoComplete="new-password" required />
+            </Field>
+            <Field label="Repetir clave nueva" required>
+              <Input type="password" value={repetida} onChange={(e) => setRepetida(e.target.value)} autoComplete="new-password" required />
+            </Field>
+          </div>
+          {mensaje && <p className={`text-sm ${mensaje.error ? 'text-red-600' : 'text-emerald-700'}`}>{mensaje.texto}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={cerrar}>
+              Cerrar
+            </Button>
+            <Button type="submit" disabled={enviando}>
+              {enviando ? 'Guardando…' : 'Cambiar clave'}
+            </Button>
+          </div>
+        </form>
+      )}
+    </Card>
+  );
+}
+
+function Respaldo() {
+  const [estado, setEstado] = useState('');
+
+  async function descargar() {
+    setEstado('Preparando respaldo…');
+    try {
+      const resumen = await descargarRespaldo();
+      setEstado(`Respaldo descargado: ${resumen}.`);
+    } catch (e) {
+      setEstado(`No se pudo generar el respaldo: ${e.message}`);
+    }
+  }
+
+  return (
+    <Card className="p-4">
+      <h2 className="mb-1 text-base font-semibold text-gray-800">Respaldo</h2>
+      <p className="mb-3 text-sm text-gray-500">
+        Descarga un Excel con todas las obras, camiones, usuarios, asignaciones, fotos registradas e historial de cambios.
+        Además, cada domingo se genera un respaldo cifrado automático en GitHub.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="secondary" onClick={descargar}>
+          💾 Descargar respaldo completo
+        </Button>
+        {estado && <span className="text-sm text-gray-600">{estado}</span>}
       </div>
     </Card>
   );
@@ -229,13 +385,10 @@ function ImportarLegado({ alTerminar }) {
     setEstado('Importando…');
     const mapa = {};
     for (const o of obras) {
-      const { data, error } = await supabase
-        .from('obras')
-        .insert({ nombre: o.nombre, direccion: o.direccion || '' })
-        .select('id')
-        .single();
+      const id = crypto.randomUUID();
+      const { error } = await supabase.from('obras').insert({ id, nombre: o.nombre, direccion: o.direccion || '' });
       if (error) return setEstado(`Error en obra "${o.nombre}": ${error.message}`);
-      mapa[o.id] = data.id;
+      mapa[o.id] = id;
     }
     const filas = eventos
       .filter((ev) => mapa[ev.obraId])
@@ -293,6 +446,8 @@ export default function Administracion({ perfil, esAdmin, puedeEditar, logout, o
         </Button>
       </Card>
 
+      <MiCuenta perfil={perfil} />
+
       {puedeEditar && <ImportarLegado />}
 
       {esAdmin ? (
@@ -301,6 +456,7 @@ export default function Administracion({ perfil, esAdmin, puedeEditar, logout, o
             {[
               ['usuarios', 'Usuarios'],
               ['historial', 'Historial de cambios'],
+              ['respaldo', 'Respaldo'],
             ].map(([valor, label]) => (
               <button
                 key={valor}
@@ -311,10 +467,12 @@ export default function Administracion({ perfil, esAdmin, puedeEditar, logout, o
               </button>
             ))}
           </nav>
-          {seccion === 'usuarios' ? <GestionUsuarios perfil={perfil} /> : <Historial obras={obras} />}
+          {seccion === 'usuarios' && <GestionUsuarios perfil={perfil} obras={obras} />}
+          {seccion === 'historial' && <Historial obras={obras} />}
+          {seccion === 'respaldo' && <Respaldo />}
         </>
       ) : (
-        <Card className="p-4 text-sm text-gray-500">La gestión de usuarios es solo para administradores.</Card>
+        <Card className="p-4 text-sm text-gray-500">La gestión de usuarios y obras asignadas es solo para administradores.</Card>
       )}
     </div>
   );

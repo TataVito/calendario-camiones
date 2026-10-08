@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { accionInfo, cambios, fechaHora } from '../lib/auditoria.js';
+import { atrasoMin, atrasoTexto, duracionTexto, horaChile, tiempoDescargaMin, tiempoEnObraMin } from '../lib/tiempos.js';
 import { Badge } from './ui.jsx';
 
 // "Creado por X · modificado por Y" (visible para todos) y, solo para el admin, el historial
@@ -28,6 +29,24 @@ export default function Autoria({ evento }) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+      {evento.llegadaReal && (
+        <div className="mb-1 text-sm text-gray-700">
+          Portería: llegó <b>{horaChile(evento.llegadaReal)}</b> ({atrasoTexto(atrasoMin(evento))})
+          {evento.inicioProcesoReal && (
+            <>
+              {' '}
+              · inicio <b>{horaChile(evento.inicioProcesoReal)}</b>
+            </>
+          )}
+          {evento.salidaReal && (
+            <>
+              {' '}
+              · salió <b>{horaChile(evento.salidaReal)}</b> · {duracionTexto(tiempoEnObraMin(evento))} en obra
+              {tiempoDescargaMin(evento) !== null && <> ({duracionTexto(tiempoDescargaMin(evento))} de descarga/carga)</>}
+            </>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
           Creado por <b className="text-gray-700">{evento.creadoPorUsuario || '—'}</b> el {fechaHora(evento.creadoEn)}

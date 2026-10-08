@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Modal } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
@@ -40,7 +40,7 @@ const PUNTO_TIPO = {
   despacho: 'bg-amber-500',
 };
 
-export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, agregar, actualizar, eliminar, buscarConflictos }) {
+export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, onRango, agregar, actualizar, eliminar, buscarConflictos }) {
   const [vista, setVista] = useState('semana'); // 'dia' | 'semana' | 'mes'
   const [diaReferencia, setDiaReferencia] = useState(hoyISO());
   const [semanaInicio, setSemanaInicio] = useState(() => inicioSemana(hoyISO()));
@@ -49,6 +49,13 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
 
   const dias = useMemo(() => diasDeSemana(semanaInicio), [semanaInicio]);
   const semanasMes = useMemo(() => cuadriculaMes(mesReferencia), [mesReferencia]);
+
+  // Solo se cargan los camiones del rango visible.
+  const rangoDesde = vista === 'dia' ? diaReferencia : vista === 'semana' ? dias[0] : semanasMes[0][0];
+  const rangoHasta = vista === 'dia' ? diaReferencia : vista === 'semana' ? dias[6] : semanasMes.at(-1)[6];
+  useEffect(() => {
+    onRango?.({ desde: rangoDesde, hasta: rangoHasta });
+  }, [rangoDesde, rangoHasta, onRango]);
 
   const eventosPorFecha = useMemo(() => {
     const mapa = {};
@@ -413,7 +420,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
       >
         {modal &&
           (modal.evento && soloLectura(modal.evento) ? (
-            <EventoDetalle evento={modal.evento} onCerrar={cerrar} completado={autenticado} />
+            <EventoDetalle evento={modal.evento} onCerrar={cerrar} completado={autenticado} puedeSubirFotos={autenticado} />
           ) : (
             <EventoForm
               evento={modal.evento}

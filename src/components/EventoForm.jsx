@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Field, Input, Select, Textarea } from './ui.jsx';
 import Autoria from './Autoria.jsx';
+import FotosGuia from './FotosGuia.jsx';
 import { hoyISO } from '../lib/fechas.js';
 import { ESTADOS, FORMAS_DESCARGA, RECURSOS_SUGERIDOS, TIPOS, horaFin, tipoInfo } from '../lib/useEventos.js';
 
@@ -33,10 +34,17 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
     if (ok) onEliminar(evento.id);
   }
 
-  const conflictos = useMemo(
-    () => buscarConflictos(datos, evento?.id),
-    [datos.fecha, datos.horaInicio, datos.duracionMin, evento?.id, buscarConflictos],
-  );
+  const [conflictos, setConflictos] = useState([]);
+  useEffect(() => {
+    let vigente = true;
+    buscarConflictos(datos, evento?.id).then((c) => {
+      if (vigente) setConflictos(c);
+    });
+    return () => {
+      vigente = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datos.fecha, datos.horaInicio, datos.duracionMin, datos.obraId, evento?.id, buscarConflictos]);
 
   function set(campo, valor) {
     setDatos((d) => ({ ...d, [campo]: valor }));
@@ -155,6 +163,7 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
         </p>
       )}
 
+      {evento && <FotosGuia evento={evento} puedeSubir puedeBorrar={esAdmin || evento.estado !== 'completado'} />}
       {evento && <Autoria evento={evento} />}
 
       <div className="flex items-center justify-between pt-2">

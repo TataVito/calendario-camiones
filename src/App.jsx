@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Calendario from './pages/Calendario.jsx';
 import Lista from './pages/Lista.jsx';
 import Administracion from './pages/Administracion.jsx';
+import Porteria from './pages/Porteria.jsx';
+import Reportes from './pages/Reportes.jsx';
 import ObrasModal from './components/ObrasModal.jsx';
 import { Button, Card } from './components/ui.jsx';
 import { useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
@@ -19,6 +21,8 @@ function minutosAhora() {
 const TABS = [
   { value: 'calendario', label: 'Calendario' },
   { value: 'lista', label: 'Lista / Imprimir' },
+  { value: 'porteria', label: 'Portería', roles: ['porteria', 'editor', 'admin'] },
+  { value: 'reportes', label: 'Reportes' },
   { value: 'administracion', label: 'Administración' },
 ];
 
@@ -50,14 +54,22 @@ function Puerta() {
 }
 
 function Principal({ sesion }) {
-  const { eventos, agregar, actualizar, eliminar, buscarConflictos, recargar, error: errorEventos, limpiarError: limpiarErrorEventos } = useEventos();
   const { obras, obraActivaId, setObraActivaId, obraActiva, agregarObra, actualizarObra, eliminarObra, error: errorObras, limpiarError: limpiarErrorObras } = useObras();
+  // Rango de fechas que muestra la pestaña activa: solo se cargan esos camiones (más los de hoy).
+  const [rango, setRango] = useState({ desde: hoyISO(), hasta: hoyISO() });
+  const cambiarRango = useCallback(
+    (nuevo) => setRango((r) => (r.desde === nuevo.desde && r.hasta === nuevo.hasta ? r : nuevo)),
+    [],
+  );
+  const { eventos, agregar, actualizar, eliminar, marcarPorteria, buscarConflictos, recargar, error: errorEventos, limpiarError: limpiarErrorEventos } =
+    useEventos(obraActivaId, rango);
   const autenticado = sesion.puedeEditar;
   const error = errorEventos || errorObras;
-  const [tab, setTab] = useState('calendario');
+  const [tab, setTab] = useState(sesion.rol === 'porteria' ? 'porteria' : 'calendario');
   const [modalObras, setModalObras] = useState(false);
+  const tabs = TABS.filter((t) => !t.roles || t.roles.includes(sesion.rol));
 
-  const eventosDeObra = useMemo(() => eventos.filter((ev) => ev.obraId === obraActivaId), [eventos, obraActivaId]);
+  const eventosDeObra = eventos;
 
   const resumenHoy = useMemo(() => {
     const deHoy = eventosDeObra.filter((ev) => ev.fecha === hoyISO() && ev.estado !== 'cancelado');
@@ -112,7 +124,7 @@ function Principal({ sesion }) {
             </div>
 
             <nav className="flex gap-1 rounded-lg bg-gray-100 p-1">
-              {TABS.map((t) => (
+              {tabs.map((t) => (
                 <button
                   key={t.value}
                   onClick={() => setTab(t.value)}
@@ -145,12 +157,11 @@ function Principal({ sesion }) {
           <Administracion {...sesion} obras={obras} />
         ) : obras.length === 0 ? (
           <Card className="mx-auto mt-10 max-w-md p-6 text-center">
-            <h2 className="mb-2 text-lg font-semibold text-gray-800">Todavía no hay obras creadas</h2>
+            <h2 className="mb-2 text-lg font-semibold text-gray-800">{autenticado ? 'Todavía no hay obras' : 'No tenés obras asignadas'}</h2>
             <p className="mb-4 text-sm text-gray-500">
-              Esta app coordina los camiones de cada obra por separado.
               {autenticado
-                ? ' Empezá creando la primera obra de la constructora.'
-                : ' Un usuario con rol Editor o Admin debe crear la primera obra.'}
+                ? 'Esta app coordina los camiones de cada obra por separado. Empezá creando una obra.'
+                : 'Pedile a un administrador que te asigne las obras que tenés que ver.'}
             </p>
             {autenticado && <Button onClick={() => setModalObras(true)}>+ Crear obra</Button>}
           </Card>
@@ -163,7 +174,7 @@ function Principal({ sesion }) {
               </h2>
             </div>
 
-            <div className="mb-5 grid grid-cols-2 gap-3 no-print md:grid-cols-4">
+            <div className={`mb-5 grid grid-cols-2 gap-3 no-print md:grid-cols-4 ${tab === 'porteria' || tab === 'reportes' ? 'hidden' : ''}`}>
               <Card className="p-3">
                 <div className="text-xs font-medium text-gray-500">Recepciones hoy</div>
                 <div className="text-2xl font-bold text-blue-700">{resumenHoy.recepciones}</div>
@@ -189,24 +200,37 @@ function Principal({ sesion }) {
               </Card>
             </div>
 
-            {tab === 'calendario' ? (
+            {tab === 'porteria' && (
+              <Porteria
+                eventos={eventosDeObra}
+                obraNombre={obraActiva?.nombre}
+                marcarPorteria={marcarPorteria}
+                puedeMarcar={sesion.puedePorteria}
+                rol={sesion.rol}
+              />
+            )}
+            {tab === 'reportes' && <Reportes obras={obras} obraActivaId={obraActivaId} />}
+            {tab === 'calendario' && (
               <Calendario
                 eventos={eventosDeObra}
                 obraActivaId={obraActivaId}
                 autenticado={autenticado}
                 esAdmin={sesion.esAdmin}
+                onRango={cambiarRango}
                 agregar={agregar}
                 actualizar={actualizar}
                 eliminar={eliminar}
                 buscarConflictos={buscarConflictos}
               />
-            ) : (
+            )}
+            {tab === 'lista' && (
               <Lista
                 eventos={eventosDeObra}
                 obraActivaId={obraActivaId}
                 obraNombre={obraActiva?.nombre}
                 autenticado={autenticado}
                 esAdmin={sesion.esAdmin}
+                onRango={cambiarRango}
                 agregar={agregar}
                 actualizar={actualizar}
                 eliminar={eliminar}

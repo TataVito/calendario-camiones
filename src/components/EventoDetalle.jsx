@@ -1,5 +1,6 @@
 import { Button } from './ui.jsx';
 import Autoria from './Autoria.jsx';
+import FotosGuia from './FotosGuia.jsx';
 import { estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
 
 function Dato({ label, valor }) {
@@ -12,7 +13,7 @@ function Dato({ label, valor }) {
   );
 }
 
-export default function EventoDetalle({ evento, onCerrar, completado }) {
+export default function EventoDetalle({ evento, onCerrar, completado, puedeSubirFotos }) {
   const estado = estadoInfo(evento.estado);
   const esRecepcion = evento.tipo === 'recepcion';
 
@@ -34,6 +35,7 @@ export default function EventoDetalle({ evento, onCerrar, completado }) {
 
       {evento.observaciones && <Dato label="Observaciones" valor={evento.observaciones} />}
 
+      <FotosGuia evento={evento} puedeSubir={puedeSubirFotos} puedeBorrar={false} />
       <Autoria evento={evento} />
 
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">

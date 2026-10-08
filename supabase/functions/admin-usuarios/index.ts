@@ -3,7 +3,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const DOMINIO = 'calendario-rvc.invalid';
-const ROLES = ['lector', 'editor', 'admin'];
+const ROLES = ['lector', 'porteria', 'editor', 'admin'];
+const UUID_RE = /^[0-9a-f-]{36}$/i;
 const USUARIO_RE = /^[a-z0-9._-]{3,30}$/;
 const CLAVE_MIN = 8;
 
@@ -55,8 +56,24 @@ Deno.serve(async (req) => {
       antes,
       despues,
     });
-  const leerPerfil = async (id: string) =>
-    (await admin.from('perfiles').select('usuario, nombre, rol').eq('id', id).single()).data;
+  const leerObras = async (id: string) =>
+    ((await admin.from('obra_usuarios').select('obra_id').eq('usuario_id', id)).data ?? []).map((r) => r.obra_id).sort();
+  const leerPerfil = async (id: string) => {
+    const p = (await admin.from('perfiles').select('usuario, nombre, rol').eq('id', id).single()).data;
+    return p ? { ...p, obras: await leerObras(id) } : null;
+  };
+  // Reemplaza las obras asignadas al usuario. undefined = no tocar.
+  const asignarObras = async (id: string, obras: unknown) => {
+    if (obras === undefined) return null;
+    if (!Array.isArray(obras) || !obras.every((o) => typeof o === 'string' && UUID_RE.test(o))) return 'Obras inválidas';
+    const { error: e1 } = await admin.from('obra_usuarios').delete().eq('usuario_id', id);
+    if (e1) return e1.message;
+    if (obras.length) {
+      const { error: e2 } = await admin.from('obra_usuarios').insert(obras.map((obra_id) => ({ obra_id, usuario_id: id })));
+      if (e2) return e2.message;
+    }
+    return null;
+  };
 
   let body: Record<string, unknown>;
   try {
@@ -87,7 +104,9 @@ Deno.serve(async (req) => {
     }
     // El trigger crea el perfil como 'lector'; aquí se asigna el rol elegido.
     await admin.from('perfiles').update({ rol, nombre }).eq('id', data.user.id);
-    await anotar('crear', data.user.id, null, { usuario, nombre, rol });
+    const errObras = await asignarObras(data.user.id, body.obras ?? []);
+    if (errObras) return responder(req, 400, { error: errObras });
+    await anotar('crear', data.user.id, null, await leerPerfil(data.user.id));
     return responder(req, 200, { ok: true });
   }
 
@@ -114,7 +133,9 @@ Deno.serve(async (req) => {
       const { error } = await admin.from('perfiles').update(cambios).eq('id', id);
       if (error) return responder(req, 400, { error: error.message });
     }
-    const despues = { ...antes, ...cambios, ...(body.clave ? { clave: '(cambiada)' } : {}) };
+    const errObras = await asignarObras(id, body.obras);
+    if (errObras) return responder(req, 400, { error: errObras });
+    const despues = { ...(await leerPerfil(id)), ...(body.clave ? { clave: '(cambiada)' } : {}) };
     if (JSON.stringify(despues) !== JSON.stringify(antes)) await anotar('modificar', id, antes, despues);
     return responder(req, 200, { ok: true });
   }

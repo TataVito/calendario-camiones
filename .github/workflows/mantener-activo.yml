@@ -1,0 +1,22 @@
+name: Mantener Supabase activo
+
+# El plan gratis de Supabase pausa el proyecto tras 7 días sin uso (vacaciones, feriados).
+# Esta tarea hace una consulta mínima (función ping, no lee datos) lunes y jueves.
+on:
+  schedule:
+    - cron: '17 12 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping a Supabase
+        run: |
+          respuesta=$(curl -sS --fail-with-body -X POST "${{ vars.VITE_SUPABASE_URL }}/rest/v1/rpc/ping" \
+            -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" -H "Content-Type: application/json" -d '{}')
+          echo "Respuesta: $respuesta"
+          test "$respuesta" = '"ok"'
