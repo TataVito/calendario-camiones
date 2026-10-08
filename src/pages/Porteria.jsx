@@ -150,10 +150,7 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
     <div className="-mx-4 min-h-[calc(100vh-180px)] bg-[#15171A] px-3 pb-8 pt-4 font-faena text-[#F2F0EA]">
       <div className="mx-auto flex max-w-2xl flex-col gap-3">
         <div className="flex flex-col gap-2 border-b border-[#2A2E33] px-1 pb-3">
-          <div className="flex items-center gap-3">
-            <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-10 w-10 rounded-sm bg-white object-contain" />
-            <span className="text-xs uppercase tracking-[0.2em] text-[#A3A7AD]">Portería · {fecha}</span>
-          </div>
+          <span className="text-xs uppercase tracking-[0.2em] text-[#A3A7AD]">Portería · {fecha}</span>
           <h2 className="font-faenacond text-3xl font-bold uppercase leading-none">{obraNombre}</h2>
           <div className="flex gap-5 text-sm text-[#C9CCD1]">
             <span>

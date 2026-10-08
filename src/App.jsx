@@ -96,12 +96,12 @@ function Principal({ sesion }) {
     <div className={`min-h-screen ${enPorteria ? 'bg-[#15171A]' : 'bg-papel'}`}>
       <header className="border-b border-tinta bg-white no-print">
         <div className="h-1.5 bg-rvc" />
-        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:py-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-12 w-12 object-contain" />
+              <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-10 w-10 object-contain md:h-12 md:w-12" />
               <div className="flex flex-col">
-                <h1 className="text-xl font-bold leading-tight text-tinta">Calendario de camiones</h1>
+                <h1 className="text-lg font-bold leading-tight text-tinta md:text-xl">Calendario de camiones</h1>
                 <span className="font-mono text-[11px] tracking-wider text-gray-500">RVC CONSTRUCTORA · CAM-01</span>
               </div>
             </div>
@@ -120,8 +120,8 @@ function Principal({ sesion }) {
             </nav>
           </div>
 
-          <div className="grid min-w-0 grid-cols-2 border border-tinta text-xs md:min-w-[400px]">
-            <div className="border-b border-r border-tinta px-3 py-1.5">
+          <div className="grid min-w-0 grid-cols-1 border border-tinta text-xs md:min-w-[400px] md:grid-cols-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 md:block md:border-b md:border-r md:border-tinta">
               <div className="font-mono text-[10px] text-gray-500">OBRA</div>
               {obras.length > 0 ? (
                 <select
@@ -139,18 +139,23 @@ function Principal({ sesion }) {
               ) : (
                 <div className="pt-1 text-sm font-bold">—</div>
               )}
+              {(sesion.esSuper || (sesion.esAdmin && obras.length > 0)) && (
+                <button onClick={() => setModalObras(true)} className="min-h-[36px] shrink-0 border border-tinta px-2 text-xs font-medium hover:bg-tinta/5 md:hidden">
+                  {obras.length > 0 ? 'Gestionar' : '+ Crear obra'}
+                </button>
+              )}
             </div>
-            <div className="border-b border-tinta px-3 py-1.5">
+            <div className="hidden border-b border-tinta px-3 py-1.5 md:block">
               <div className="font-mono text-[10px] text-gray-500">DIRECCIÓN</div>
               <div className="truncate pt-1 text-sm font-medium">{obraActiva?.direccion || '—'}</div>
             </div>
-            <div className="border-r border-tinta px-3 py-1.5">
+            <div className="hidden border-r border-tinta px-3 py-1.5 md:block">
               <div className="font-mono text-[10px] text-gray-500">USUARIO</div>
               <div className="truncate pt-0.5 font-medium">
                 {sesion.perfil.usuario} · {ROL_TXT[sesion.rol] || sesion.rol}
               </div>
             </div>
-            <div className="flex items-center justify-between gap-2 px-3 py-1.5">
+            <div className="hidden items-center justify-between gap-2 px-3 py-1.5 md:flex">
               <div>
                 <div className="font-mono text-[10px] text-gray-500">OBRAS</div>
                 <div className="pt-0.5 font-medium">{obras.length}</div>
