@@ -46,7 +46,7 @@ export const ESTADOS = [
   { value: 'en_porteria', label: 'En portería', color: 'bg-tinta/10 text-tinta border-tinta' },
   { value: 'en_proceso', label: 'En proceso (carga/descarga)', color: 'bg-tinta text-papel border-tinta' },
   { value: 'completado', label: 'Completado', color: 'bg-transparent text-[#2E6B4F] border-[#2E6B4F] border-dashed' },
-  { value: 'cancelado', label: 'Cancelado', color: 'bg-transparent text-[#B3261E] border-[#B3261E] line-through' },
+  { value: 'cancelado', label: 'Cancelado', color: 'bg-transparent text-[#D13038] border-[#D13038] line-through' },
 ];
 
 export const TIPOS = [

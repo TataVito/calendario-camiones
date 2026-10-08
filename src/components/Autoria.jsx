@@ -58,7 +58,7 @@ export default function Autoria({ evento }) {
           )}
         </span>
         {historial.length > 0 && (
-          <button type="button" onClick={() => setAbierto((v) => !v)} className="font-medium text-[#B3261E] hover:underline">
+          <button type="button" onClick={() => setAbierto((v) => !v)} className="font-medium text-[#D13038] hover:underline">
             {abierto ? 'Ocultar historial' : `Ver historial (${historial.length})`}
           </button>
         )}

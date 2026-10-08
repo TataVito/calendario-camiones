@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/rvc.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1E2A44" />
+    <meta name="theme-color" content="#D13038" />
     <title>Calendario de Camiones - RVC</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,8 +14,8 @@
     />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Estilo "Plano técnico": papel, tinta azul marino, esquinas rectas, sin sombras.
-      // La escala "gray" se redefine con los tonos del plano, así toda la app los toma.
+      // Estilo "Plano técnico" con la marca RVC: rojo corporativo (#D13038, el del logo), blanco,
+      // papel cálido y tinta carbón. La escala "gray" se redefine para que toda la app la tome.
       tailwind.config = {
         theme: {
           extend: {
@@ -26,24 +26,26 @@
               faenacond: ['"Barlow Condensed"', '"Arial Narrow"', 'sans-serif'],
             },
             colors: {
-              white: '#FBFAF6',
-              papel: '#F3F0E8',
-              tinta: '#1E2A44',
+              white: '#FFFFFF',
+              papel: '#F5F3EE',
+              tinta: '#26262B',
+              rvc: '#D13038',
+              rvcosc: '#A8232A',
               gray: {
-                50: '#F7F5EF',
-                100: '#EFEBE1',
-                200: '#E4DFD2',
-                300: '#C9C3B4',
-                400: '#8C8676',
-                500: '#5A6478',
-                600: '#4A5468',
-                700: '#34405A',
-                800: '#26324D',
-                900: '#1E2A44',
+                50: '#F8F7F4',
+                100: '#F0EEE9',
+                200: '#E4E1DA',
+                300: '#CBC7BE',
+                400: '#8F8B82',
+                500: '#5F5D58',
+                600: '#4A4844',
+                700: '#38373A',
+                800: '#2E2D31',
+                900: '#26262B',
               },
             },
             borderRadius: { sm: '1px', DEFAULT: '2px', md: '2px', lg: '2px', xl: '3px', '2xl': '4px' },
-            boxShadow: { sm: 'none', DEFAULT: 'none', md: '0 0 0 1px #1E2A44', lg: 'none', xl: '0 8px 24px rgba(30,42,68,0.18)' },
+            boxShadow: { sm: 'none', DEFAULT: 'none', md: '0 0 0 1px #26262B', lg: 'none', xl: '0 8px 24px rgba(38,38,43,0.18)' },
           },
         },
       };

@@ -22,11 +22,11 @@ export default function Login({ login }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-papel px-4">
-      <Card className="w-full max-w-sm p-6">
+      <Card className="w-full max-w-sm border-t-4 border-t-rvc p-6">
         <div className="mb-5 flex items-center gap-3">
-          <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-10 w-10 rounded object-cover" />
+          <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-14 w-14 object-contain" />
           <div>
-            <h1 className="text-lg font-bold text-[#B3261E]">Calendario de Camiones</h1>
+            <h1 className="text-lg font-bold text-[#D13038]">Calendario de Camiones</h1>
             <p className="text-xs text-gray-500">RVC Constructora — acceso restringido</p>
           </div>
         </div>

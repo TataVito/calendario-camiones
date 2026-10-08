@@ -93,7 +93,7 @@ export default function FotosGuia({ evento, puedeSubir, puedeBorrar, oscuro = fa
             <Button
               type="button"
               variant="secondary"
-              className={oscuro ? 'min-h-[48px] rounded-md border-0 bg-[#F5C518] font-bold uppercase text-[#15171A] hover:bg-[#FFD84D]' : ''}
+              className={oscuro ? 'min-h-[48px] rounded-md border-0 bg-[#E5484F] font-bold uppercase text-white hover:bg-[#EF6168]' : ''}
               onClick={() => entrada.current.click()}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

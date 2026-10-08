@@ -3,7 +3,8 @@ import FotosGuia from '../components/FotosGuia.jsx';
 import { estadoInfo, formaDescargaInfo, hoyChile, horaFin, tipoInfo, toMinutos } from '../lib/useEventos.js';
 import { TOLERANCIA_MIN, atrasoMin, atrasoTexto, duracionTexto, horaChile, tiempoEnObraMin } from '../lib/tiempos.js';
 
-// Estilo "Faena": oscuro, alto contraste y botones grandes, para usar en terreno con el celular.
+// Estilo "Faena" con la marca RVC: oscuro, alto contraste, rojo corporativo y botones grandes,
+// para usar en terreno con el celular. El atraso va en naranja para no confundirse con la marca.
 
 // Siguiente paso de portería según el estado del camión.
 const PASOS = {
@@ -17,7 +18,7 @@ const ETIQUETA_ESTADO = {
   programado: 'bg-[#2E3238] text-[#C9CCD1]',
   confirmado: 'bg-[#2E3238] text-[#C9CCD1]',
   en_porteria: 'bg-[#6CB4FF] text-[#0B1A2B]',
-  en_proceso: 'bg-[#F5C518] text-[#15171A]',
+  en_proceso: 'bg-[#E5484F] text-white',
   completado: 'bg-[#2E3238] text-[#7CD992]',
   cancelado: 'bg-[#2E3238] text-[#A3A7AD]',
 };
@@ -49,13 +50,13 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
   }
 
   return (
-    <div className={`flex flex-col gap-3 rounded-md bg-[#1F2226] p-4 ${enObra ? 'shadow-[inset_0_0_0_2px_#F5C518]' : ''} ${terminado ? 'opacity-60' : ''}`}>
+    <div className={`flex flex-col gap-3 rounded-md bg-[#1F2226] p-4 ${enObra ? 'shadow-[inset_0_0_0_2px_#E5484F]' : ''} ${terminado ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="font-faenacond text-4xl font-bold leading-none">
           {ev.horaInicio} <span className="text-lg font-semibold text-[#A3A7AD]">– {horaFin(ev)}</span>
         </div>
         {atrasadoAhora ? (
-          <span className="rounded-sm bg-[#FF5A4E] px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-[#2B0703]">
+          <span className="rounded-sm bg-[#FF9A3D] px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-[#2B1503]">
             Atrasado {duracionTexto(ahora - toMinutos(ev.horaInicio))}
           </span>
         ) : (
@@ -114,7 +115,7 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
       {verFotos ? (
         <FotosGuia evento={ev} puedeSubir={puedeSubirFotos} puedeBorrar={puedeBorrarFotos} oscuro />
       ) : (
-        <button onClick={() => setVerFotos(true)} className="flex min-h-[40px] items-center gap-2 self-start font-semibold text-[#F5C518] hover:underline">
+        <button onClick={() => setVerFotos(true)} className="flex min-h-[40px] items-center gap-2 self-start font-semibold text-[#FF7A80] hover:underline">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
             <circle cx="12" cy="13" r="3.5" />
@@ -149,11 +150,14 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
     <div className="-mx-4 min-h-[calc(100vh-180px)] bg-[#15171A] px-3 pb-8 pt-4 font-faena text-[#F2F0EA]">
       <div className="mx-auto flex max-w-2xl flex-col gap-3">
         <div className="flex flex-col gap-2 border-b border-[#2A2E33] px-1 pb-3">
-          <span className="text-xs uppercase tracking-[0.2em] text-[#A3A7AD]">Portería · {fecha}</span>
+          <div className="flex items-center gap-3">
+            <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-10 w-10 rounded-sm bg-white object-contain" />
+            <span className="text-xs uppercase tracking-[0.2em] text-[#A3A7AD]">Portería · {fecha}</span>
+          </div>
           <h2 className="font-faenacond text-3xl font-bold uppercase leading-none">{obraNombre}</h2>
           <div className="flex gap-5 text-sm text-[#C9CCD1]">
             <span>
-              <b className="text-base text-[#F5C518]">{pendientes.length}</b> pendientes
+              <b className="text-base text-[#FF7A80]">{pendientes.length}</b> pendientes
             </span>
             <span>
               <b className="text-base text-[#F2F0EA]">{enObra.length}</b> en obra

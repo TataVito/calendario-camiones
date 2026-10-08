@@ -184,19 +184,19 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
           <div className="flex border border-tinta">
             <button
               onClick={() => setVista('dia')}
-              className={`min-h-[40px] px-4 text-sm font-medium transition ${'dia' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'dia' ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'}`}
+              className={`min-h-[40px] px-4 text-sm font-medium transition ${'dia' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'dia' ? 'bg-rvc text-white' : 'text-tinta hover:bg-tinta/5'}`}
             >
               Día
             </button>
             <button
               onClick={() => setVista('semana')}
-              className={`min-h-[40px] px-4 text-sm font-medium transition ${'semana' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'semana' ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'}`}
+              className={`min-h-[40px] px-4 text-sm font-medium transition ${'semana' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'semana' ? 'bg-rvc text-white' : 'text-tinta hover:bg-tinta/5'}`}
             >
               Semana
             </button>
             <button
               onClick={() => setVista('mes')}
-              className={`min-h-[40px] px-4 text-sm font-medium transition ${'mes' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'mes' ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'}`}
+              className={`min-h-[40px] px-4 text-sm font-medium transition ${'mes' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'mes' ? 'bg-rvc text-white' : 'text-tinta hover:bg-tinta/5'}`}
             >
               Mes
             </button>
@@ -299,7 +299,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             {dias.map((dia) => (
               <div
                 key={dia}
-                className={`border-l border-gray-300 px-2 py-2 text-center ${esHoy(dia) ? 'bg-tinta font-medium text-papel' : ''}`}
+                className={`border-l border-gray-300 px-2 py-2 text-center ${esHoy(dia) ? 'bg-rvc font-medium text-white' : ''}`}
               >
                 {etiquetaDia(dia)}
               </div>
@@ -320,7 +320,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             </div>
 
             {dias.map((dia) => (
-              <div key={dia} className={`relative border-l border-gray-300 ${esHoy(dia) ? 'bg-tinta/[0.03]' : ''}`} onDoubleClick={() => abrirNuevo(dia, '09:00')}>
+              <div key={dia} className={`relative border-l border-gray-300 ${esHoy(dia) ? 'bg-rvc/[0.04]' : ''}`} onDoubleClick={() => abrirNuevo(dia, '09:00')}>
                 {horas.map((h) => (
                   <div
                     key={h}
@@ -388,7 +388,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                         verDia(dia);
                       }}
                       className={`mb-1 inline-flex h-7 min-w-[28px] items-center justify-center px-1 font-mono text-xs hover:ring-1 hover:ring-tinta ${
-                        esHoy(dia) ? 'bg-tinta font-medium text-papel' : fueraDeMes ? 'text-gray-400' : 'text-tinta'
+                        esHoy(dia) ? 'bg-rvc font-medium text-white' : fueraDeMes ? 'text-gray-400' : 'text-tinta'
                       }`}
                       title="Ver este día"
                     >

@@ -94,12 +94,16 @@ function Principal({ sesion }) {
 
   return (
     <div className={`min-h-screen ${enPorteria ? 'bg-[#15171A]' : 'bg-papel'}`}>
-      <header className="border-b border-tinta bg-papel no-print">
+      <header className="border-b border-tinta bg-white no-print">
+        <div className="h-1.5 bg-rvc" />
         <div className="mx-auto grid max-w-7xl gap-3 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex flex-col gap-3">
-            <div className="flex items-baseline gap-3">
-              <span className="font-mono text-xs tracking-wider text-gray-600">RVC / CAM-01</span>
-              <h1 className="text-xl font-bold text-tinta">Calendario de camiones</h1>
+            <div className="flex items-center gap-3">
+              <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-12 w-12 object-contain" />
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold leading-tight text-tinta">Calendario de camiones</h1>
+                <span className="font-mono text-[11px] tracking-wider text-gray-500">RVC CONSTRUCTORA · CAM-01</span>
+              </div>
             </div>
             <nav className="flex w-fit max-w-full flex-wrap border border-tinta">
               {tabs.map((t, i) => (
@@ -107,7 +111,7 @@ function Principal({ sesion }) {
                   key={t.value}
                   onClick={() => setTab(t.value)}
                   className={`min-h-[40px] px-4 text-sm font-medium transition ${i > 0 ? 'border-l border-tinta' : ''} ${
-                    tab === t.value ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'
+                    tab === t.value ? 'bg-rvc text-white' : 'text-tinta hover:bg-rvc/5'
                   }`}
                 >
                   {t.label}
@@ -163,7 +167,7 @@ function Principal({ sesion }) {
 
       <main className={`mx-auto max-w-7xl px-4 ${enPorteria ? 'py-0' : 'py-5'}`}>
         {error && (
-          <div className="mb-4 mt-4 flex items-center justify-between gap-3 border border-[#B3261E] bg-[#FBEDEC] px-3 py-2 text-sm text-[#8E1E18] no-print">
+          <div className="mb-4 mt-4 flex items-center justify-between gap-3 border border-[#D13038] bg-[#FBEBEC] px-3 py-2 text-sm text-[#A8232A] no-print">
             <span>No se pudo completar la operación: {error}</span>
             <button
               onClick={() => {

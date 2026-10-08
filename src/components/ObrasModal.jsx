@@ -64,7 +64,7 @@ export default function ObrasModal({ open, onClose, obras, obraActivaId, setObra
           ) : (
             <div
               key={obra.id}
-              className={`flex items-center justify-between rounded-lg border px-3 py-2 ${obra.id === obraActivaId ? 'border-[#B3261E] bg-tinta/5' : 'border-gray-200'}`}
+              className={`flex items-center justify-between rounded-lg border px-3 py-2 ${obra.id === obraActivaId ? 'border-[#D13038] bg-tinta/5' : 'border-gray-200'}`}
             >
               <div>
                 <div className="font-medium text-gray-900">{obra.nombre}</div>

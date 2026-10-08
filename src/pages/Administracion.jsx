@@ -121,7 +121,7 @@ function FormularioUsuario({ usuario, esUnoMismo, esSuper, obras, obrasAsignadas
             {obras.length > 1 && (
               <button
                 type="button"
-                className="text-xs text-[#B3261E] hover:underline"
+                className="text-xs text-[#D13038] hover:underline"
                 onClick={() => setSeleccion(new Set(seleccion.size === obras.length ? [] : obras.map((o) => o.id)))}
               >
                 {seleccion.size === obras.length ? 'Ninguna' : 'Todas'}
@@ -475,7 +475,7 @@ export default function Administracion({ perfil, esAdmin, esSuper, logout, obras
               <button
                 key={valor}
                 onClick={() => setSeccion(valor)}
-                className={`flex-1 rounded-md px-4 py-1.5 text-sm font-medium transition ${seccion === valor ? 'bg-white text-[#B3261E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                className={`flex-1 rounded-md px-4 py-1.5 text-sm font-medium transition ${seccion === valor ? 'bg-white text-[#D13038] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 {label}
               </button>

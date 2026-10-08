@@ -83,7 +83,7 @@ function GraficoPorDia({ dias }) {
               </span>
             )}
             <div
-              className={`w-full max-w-[24px] rounded-t ${hover === i ? 'bg-[#3B5A9A]' : 'bg-tinta'}`}
+              className={`w-full max-w-[24px] rounded-t ${hover === i ? 'bg-rvc' : 'bg-tinta'}`}
               style={{ height: d.total ? Math.max(2, (d.total / max) * ALTO) : 0 }}
             />
           </div>

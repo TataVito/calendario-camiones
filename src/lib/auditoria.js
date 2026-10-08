@@ -3,7 +3,7 @@ import { estadoInfo, formaDescargaInfo, tipoInfo } from './useEventos.js';
 export const ACCIONES = [
   { value: 'crear', label: 'Creó', color: 'bg-transparent text-[#2E6B4F] border-[#2E6B4F]' },
   { value: 'modificar', label: 'Modificó', color: 'bg-transparent text-tinta border-tinta' },
-  { value: 'eliminar', label: 'Eliminó', color: 'bg-transparent text-[#B3261E] border-[#B3261E]' },
+  { value: 'eliminar', label: 'Eliminó', color: 'bg-transparent text-[#D13038] border-[#D13038]' },
 ];
 
 export function accionInfo(value) {
