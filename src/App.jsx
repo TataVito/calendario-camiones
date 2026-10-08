@@ -204,6 +204,7 @@ function Principal({ sesion }) {
               <Lista
                 eventos={eventosDeObra}
                 obraActivaId={obraActivaId}
+                obraNombre={obraActiva?.nombre}
                 autenticado={autenticado}
                 esAdmin={sesion.esAdmin}
                 agregar={agregar}

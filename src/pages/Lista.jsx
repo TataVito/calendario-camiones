@@ -4,14 +4,16 @@ import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
 import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
 import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
+import { exportarExcel } from '../lib/exportarExcel.js';
 
-export default function Lista({ eventos, obraActivaId, autenticado, esAdmin, agregar, actualizar, eliminar, buscarConflictos }) {
+export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, agregar, actualizar, eliminar, buscarConflictos }) {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [tipo, setTipo] = useState('');
   const [estado, setEstado] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState(null);
+  const [exportando, setExportando] = useState(false);
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -50,6 +52,15 @@ export default function Lista({ eventos, obraActivaId, autenticado, esAdmin, agr
   }
 
   const esRangoUnDia = desde === hasta;
+
+  async function exportar() {
+    setExportando(true);
+    try {
+      await exportarExcel(filtrados, { obra: obraNombre || 'Obra', desde, hasta });
+    } finally {
+      setExportando(false);
+    }
+  }
 
   return (
     <div>
@@ -99,14 +110,19 @@ export default function Lista({ eventos, obraActivaId, autenticado, esAdmin, agr
 
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src="/rvc.jpg" alt="RVC" className="h-8 w-8 rounded object-cover" />
+          <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-8 w-8 rounded object-cover" />
           <h2 className="text-lg font-semibold text-gray-800 print:block">
             {esRangoUnDia ? `Lista de camiones — ${etiquetaFechaLarga(desde)}` : `Lista de camiones (${desde} a ${hasta})`}
           </h2>
         </div>
-        <Button variant="secondary" className="no-print" onClick={() => window.print()}>
-          🖨️ Imprimir para portería
-        </Button>
+        <div className="flex gap-2 no-print">
+          <Button variant="secondary" onClick={exportar} disabled={exportando || filtrados.length === 0}>
+            {exportando ? 'Generando…' : `📊 Exportar a Excel (${filtrados.length})`}
+          </Button>
+          <Button variant="secondary" onClick={() => window.print()}>
+            🖨️ Imprimir para portería
+          </Button>
+        </div>
       </div>
 
       <Card className="overflow-x-auto">
