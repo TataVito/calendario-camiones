@@ -35,7 +35,7 @@ try {
 }
 
 function Centrado({ children }) {
-  return <div className="flex min-h-screen items-center justify-center px-4 text-sm text-gray-500">{children}</div>;
+  return <div className="flex min-h-screen items-center justify-center bg-papel px-4 text-sm text-gray-500">{children}</div>;
 }
 
 export default function App() {
@@ -89,25 +89,42 @@ function Principal({ sesion }) {
     await recargar();
   }
 
-  return (
-    <div className="min-h-screen">
-      <header className="border-b border-gray-200 bg-white no-print">
-        <div className="mx-auto max-w-7xl px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <img src={`${import.meta.env.BASE_URL}rvc.jpg`} alt="RVC" className="h-10 w-10 rounded object-cover" />
-              <div>
-                <h1 className="text-xl font-bold text-[#C42B2B]">Calendario de Camiones</h1>
-                <p className="text-sm text-gray-500">Coordinación de recepciones y despachos — RVC Constructora</p>
-              </div>
-            </div>
+  const ROL_TXT = { lector: 'lector', porteria: 'portería', editor: 'editor', admin: 'admin de obra', superusuario: 'súper usuario' };
+  const enPorteria = tab === 'porteria';
 
-            <div className="flex items-center gap-2">
-              {obras.length > 0 && (
+  return (
+    <div className={`min-h-screen ${enPorteria ? 'bg-[#15171A]' : 'bg-papel'}`}>
+      <header className="border-b border-tinta bg-papel no-print">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-baseline gap-3">
+              <span className="font-mono text-xs tracking-wider text-gray-600">RVC / CAM-01</span>
+              <h1 className="text-xl font-bold text-tinta">Calendario de camiones</h1>
+            </div>
+            <nav className="flex w-fit max-w-full flex-wrap border border-tinta">
+              {tabs.map((t, i) => (
+                <button
+                  key={t.value}
+                  onClick={() => setTab(t.value)}
+                  className={`min-h-[40px] px-4 text-sm font-medium transition ${i > 0 ? 'border-l border-tinta' : ''} ${
+                    tab === t.value ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div className="grid min-w-0 grid-cols-2 border border-tinta text-xs md:min-w-[400px]">
+            <div className="border-b border-r border-tinta px-3 py-1.5">
+              <div className="font-mono text-[10px] text-gray-500">OBRA</div>
+              {obras.length > 0 ? (
                 <select
                   value={obraActivaId}
                   onChange={(e) => setObraActivaId(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium focus:border-[#C42B2B] focus:outline-none focus:ring-1 focus:ring-[#C42B2B]"
+                  aria-label="Obra"
+                  className="min-h-[28px] w-full border-0 bg-transparent p-0 text-sm font-bold text-tinta focus:outline-none focus:ring-1 focus:ring-tinta"
                 >
                   {obras.map((o) => (
                     <option key={o.id} value={o.id}>
@@ -115,32 +132,38 @@ function Principal({ sesion }) {
                     </option>
                   ))}
                 </select>
-              )}
-              {(sesion.esSuper || (sesion.esAdmin && obras.length > 0)) && (
-                <Button variant="secondary" onClick={() => setModalObras(true)}>
-                  {obras.length > 0 ? 'Gestionar obras' : '+ Crear obra'}
-                </Button>
+              ) : (
+                <div className="pt-1 text-sm font-bold">—</div>
               )}
             </div>
-
-            <nav className="flex gap-1 rounded-lg bg-gray-100 p-1">
-              {tabs.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTab(t.value)}
-                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${tab === t.value ? 'bg-white text-[#C42B2B] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                >
-                  {t.label}
+            <div className="border-b border-tinta px-3 py-1.5">
+              <div className="font-mono text-[10px] text-gray-500">DIRECCIÓN</div>
+              <div className="truncate pt-1 text-sm font-medium">{obraActiva?.direccion || '—'}</div>
+            </div>
+            <div className="border-r border-tinta px-3 py-1.5">
+              <div className="font-mono text-[10px] text-gray-500">USUARIO</div>
+              <div className="truncate pt-0.5 font-medium">
+                {sesion.perfil.usuario} · {ROL_TXT[sesion.rol] || sesion.rol}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5">
+              <div>
+                <div className="font-mono text-[10px] text-gray-500">OBRAS</div>
+                <div className="pt-0.5 font-medium">{obras.length}</div>
+              </div>
+              {(sesion.esSuper || (sesion.esAdmin && obras.length > 0)) && (
+                <button onClick={() => setModalObras(true)} className="min-h-[32px] border border-tinta px-2 text-xs font-medium hover:bg-tinta/5">
+                  {obras.length > 0 ? 'Gestionar' : '+ Crear obra'}
                 </button>
-              ))}
-            </nav>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-5">
+      <main className={`mx-auto max-w-7xl px-4 ${enPorteria ? 'py-0' : 'py-5'}`}>
         {error && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 no-print">
+          <div className="mb-4 mt-4 flex items-center justify-between gap-3 border border-[#B3261E] bg-[#FBEDEC] px-3 py-2 text-sm text-[#8E1E18] no-print">
             <span>No se pudo completar la operación: {error}</span>
             <button
               onClick={() => {
@@ -167,37 +190,31 @@ function Principal({ sesion }) {
           </Card>
         ) : (
           <>
-            <div className="mb-4 flex items-center justify-between no-print">
-              <h2 className="text-base font-semibold text-gray-700">
-                Obra: <span className="text-[#C42B2B]">{obraActiva?.nombre}</span>
-                {obraActiva?.direccion && <span className="ml-2 text-sm font-normal text-gray-400">({obraActiva.direccion})</span>}
-              </h2>
-            </div>
 
-            <div className={`mb-5 grid grid-cols-2 gap-3 no-print md:grid-cols-4 ${tab === 'porteria' || tab === 'reportes' ? 'hidden' : ''}`}>
-              <Card className="p-3">
-                <div className="text-xs font-medium text-gray-500">Recepciones hoy</div>
-                <div className="text-2xl font-bold text-blue-700">{resumenHoy.recepciones}</div>
-              </Card>
-              <Card className="p-3">
-                <div className="text-xs font-medium text-gray-500">Despachos hoy</div>
-                <div className="text-2xl font-bold text-amber-700">{resumenHoy.despachos}</div>
-              </Card>
-              <Card className="p-3">
-                <div className="text-xs font-medium text-gray-500">En portería / proceso</div>
-                <div className="text-2xl font-bold text-indigo-700">{resumenHoy.enProceso}</div>
-              </Card>
-              <Card className="p-3">
-                <div className="text-xs font-medium text-gray-500">Próximo camión</div>
+            <div className={`mb-5 grid grid-cols-2 border border-tinta bg-white no-print md:grid-cols-4 ${enPorteria || tab === 'reportes' ? 'hidden' : ''}`}>
+              <div className="border-b border-r border-gray-300 px-4 py-2 md:border-b-0">
+                <div className="font-mono text-[10px] text-gray-500">RECEPCIONES HOY</div>
+                <div className="font-mono text-2xl font-medium">{resumenHoy.recepciones}</div>
+              </div>
+              <div className="border-b border-gray-300 px-4 py-2 md:border-b-0 md:border-r">
+                <div className="font-mono text-[10px] text-gray-500">DESPACHOS HOY</div>
+                <div className="font-mono text-2xl font-medium">{resumenHoy.despachos}</div>
+              </div>
+              <div className="border-r border-gray-300 px-4 py-2">
+                <div className="font-mono text-[10px] text-gray-500">EN PORTERÍA / DESCARGANDO</div>
+                <div className="font-mono text-2xl font-medium">{resumenHoy.enProceso}</div>
+              </div>
+              <div className="px-4 py-2">
+                <div className="font-mono text-[10px] text-gray-500">PRÓXIMO CAMIÓN</div>
                 {resumenHoy.proximo ? (
-                  <div className="text-sm font-semibold text-gray-800">
-                    {resumenHoy.proximo.horaInicio} · {tipoInfo(resumenHoy.proximo.tipo).label}
-                    {resumenHoy.proximo.proveedorCliente && ` (${resumenHoy.proximo.proveedorCliente})`}
+                  <div className="pt-1 text-sm font-bold">
+                    <span className="font-mono">{resumenHoy.proximo.horaInicio}</span> · {tipoInfo(resumenHoy.proximo.tipo).label}
+                    {resumenHoy.proximo.proveedorCliente && ` · ${resumenHoy.proximo.proveedorCliente}`}
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-400">Sin más camiones hoy</div>
+                  <div className="pt-1 text-sm text-gray-500">Sin más camiones hoy</div>
                 )}
-              </Card>
+              </div>
             </div>
 
             {tab === 'porteria' && (

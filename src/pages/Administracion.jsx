@@ -121,7 +121,7 @@ function FormularioUsuario({ usuario, esUnoMismo, esSuper, obras, obrasAsignadas
             {obras.length > 1 && (
               <button
                 type="button"
-                className="text-xs text-[#C42B2B] hover:underline"
+                className="text-xs text-[#B3261E] hover:underline"
                 onClick={() => setSeleccion(new Set(seleccion.size === obras.length ? [] : obras.map((o) => o.id)))}
               >
                 {seleccion.size === obras.length ? 'Ninguna' : 'Todas'}
@@ -137,7 +137,7 @@ function FormularioUsuario({ usuario, esUnoMismo, esSuper, obras, obrasAsignadas
             ))}
             {obras.length === 0 && <span className="text-xs text-gray-400">No hay obras creadas.</span>}
           </div>
-          {seleccion.size === 0 && <p className="mt-1 text-xs text-amber-700">Sin obras asignadas no verá ningún camión.</p>}
+          {seleccion.size === 0 && <p className="mt-1 text-xs text-[#7A4E0A]">Sin obras asignadas no verá ningún camión.</p>}
         </div>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -333,7 +333,7 @@ function MiCuenta({ perfil }) {
               <Input type="password" value={repetida} onChange={(e) => setRepetida(e.target.value)} autoComplete="new-password" required />
             </Field>
           </div>
-          {mensaje && <p className={`text-sm ${mensaje.error ? 'text-red-600' : 'text-emerald-700'}`}>{mensaje.texto}</p>}
+          {mensaje && <p className={`text-sm ${mensaje.error ? 'text-red-600' : 'text-[#2E6B4F]'}`}>{mensaje.texto}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={cerrar}>
               Cerrar
@@ -430,7 +430,7 @@ function ImportarLegado({ alTerminar }) {
   }
 
   return (
-    <Card className="border-amber-300 bg-amber-50 p-4">
+    <Card className="border-[#B07A1E] bg-[#F6EBD4] p-4">
       <h2 className="mb-1 text-base font-semibold text-gray-800">Datos de la versión anterior en este navegador</h2>
       <p className="mb-3 text-sm text-gray-600">
         Encontré {obras.length} obras y {eventos.length} camiones guardados solo en este equipo. Podés subirlos a la base compartida (se
@@ -475,7 +475,7 @@ export default function Administracion({ perfil, esAdmin, esSuper, logout, obras
               <button
                 key={valor}
                 onClick={() => setSeccion(valor)}
-                className={`flex-1 rounded-md px-4 py-1.5 text-sm font-medium transition ${seccion === valor ? 'bg-white text-[#C42B2B] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                className={`flex-1 rounded-md px-4 py-1.5 text-sm font-medium transition ${seccion === valor ? 'bg-white text-[#B3261E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 {label}
               </button>

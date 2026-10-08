@@ -4,12 +4,16 @@
 
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  background: #f3f4f6;
+  font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  background: #f3f0e8;
+  color: #1e2a44;
 }
 
 @media print {
   .no-print {
     display: none !important;
+  }
+  body {
+    background: #ffffff;
   }
 }

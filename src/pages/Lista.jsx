@@ -163,7 +163,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
                     <span className={`rounded-full border px-2 py-0.5 text-xs ${est.color}`}>{est.label}</span>
                   </td>
                   <td className="px-3 py-2 no-print">
-                    <button className="text-sm text-[#C42B2B] hover:underline" onClick={() => setModal({ evento: ev })}>
+                    <button className="text-sm text-[#B3261E] hover:underline" onClick={() => setModal({ evento: ev })}>
                       {soloLectura(ev) ? 'Ver' : 'Editar'}
                     </button>
                   </td>

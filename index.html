@@ -4,8 +4,50 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/rvc.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1E2A44" />
     <title>Calendario de Camiones - RVC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=DM+Mono:wght@400;500&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Estilo "Plano técnico": papel, tinta azul marino, esquinas rectas, sin sombras.
+      // La escala "gray" se redefine con los tonos del plano, así toda la app los toma.
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"DM Sans"', '"Segoe UI"', 'system-ui', 'sans-serif'],
+              mono: ['"DM Mono"', 'ui-monospace', 'monospace'],
+              faena: ['Barlow', '"Segoe UI"', 'system-ui', 'sans-serif'],
+              faenacond: ['"Barlow Condensed"', '"Arial Narrow"', 'sans-serif'],
+            },
+            colors: {
+              white: '#FBFAF6',
+              papel: '#F3F0E8',
+              tinta: '#1E2A44',
+              gray: {
+                50: '#F7F5EF',
+                100: '#EFEBE1',
+                200: '#E4DFD2',
+                300: '#C9C3B4',
+                400: '#8C8676',
+                500: '#5A6478',
+                600: '#4A5468',
+                700: '#34405A',
+                800: '#26324D',
+                900: '#1E2A44',
+              },
+            },
+            borderRadius: { sm: '1px', DEFAULT: '2px', md: '2px', lg: '2px', xl: '3px', '2xl': '4px' },
+            boxShadow: { sm: 'none', DEFAULT: 'none', md: '0 0 0 1px #1E2A44', lg: 'none', xl: '0 8px 24px rgba(30,42,68,0.18)' },
+          },
+        },
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>

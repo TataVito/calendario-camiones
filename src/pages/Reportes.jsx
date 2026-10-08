@@ -54,8 +54,8 @@ function agrupar(lista, clave) {
 function Tile({ titulo, valor, detalle }) {
   return (
     <Card className="p-3">
-      <div className="text-xs font-medium text-gray-500">{titulo}</div>
-      <div className="text-2xl font-bold text-gray-900">{valor}</div>
+      <div className="font-mono text-[10px] uppercase tracking-wide text-gray-500">{titulo}</div>
+      <div className="font-mono text-2xl font-medium text-tinta">{valor}</div>
       {detalle && <div className="text-xs text-gray-500">{detalle}</div>}
     </Card>
   );
@@ -83,7 +83,7 @@ function GraficoPorDia({ dias }) {
               </span>
             )}
             <div
-              className={`w-full max-w-[24px] rounded-t ${hover === i ? 'bg-[#1d4ed8]' : 'bg-[#3b82f6]'}`}
+              className={`w-full max-w-[24px] rounded-t ${hover === i ? 'bg-[#3B5A9A]' : 'bg-tinta'}`}
               style={{ height: d.total ? Math.max(2, (d.total / max) * ALTO) : 0 }}
             />
           </div>
@@ -277,7 +277,7 @@ export default function Reportes({ obras, obraActivaId }) {
       </Card>
 
       {t.conRegistro === 0 && eventos.length > 0 && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="border border-[#B07A1E] bg-[#F6EBD4] text-[#5C3D06] px-3 py-2 text-sm">
           Todavía no hay horas reales registradas en este período: la puntualidad y los tiempos se calculan con los
           registros de la pestaña Portería.
         </p>

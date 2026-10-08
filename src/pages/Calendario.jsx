@@ -30,14 +30,24 @@ function capitalizar(texto) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
+// Plano técnico: recepción azul plano, despacho ocre. Completado = solo contorno punteado;
+// en proceso = relleno de tinta. Se distinguen también por la letra del tipo, no solo por color.
 const ESTILOS_TIPO = {
-  recepcion: 'bg-blue-100 border-blue-400 text-blue-900',
-  despacho: 'bg-amber-100 border-amber-500 text-amber-900',
+  recepcion: 'bg-[#D7E0F0] border-tinta text-tinta',
+  despacho: 'bg-[#F3DCC2] border-[#7A3E0C] text-[#4A2507]',
 };
 
+function estiloEvento(ev) {
+  if (ev.estado === 'completado') return 'bg-transparent border-dashed border-gray-400 text-gray-500';
+  if (ev.estado === 'en_proceso' || ev.estado === 'en_porteria') return 'bg-tinta border-tinta text-papel';
+  return ESTILOS_TIPO[ev.tipo] || ESTILOS_TIPO.recepcion;
+}
+
+const MARCA_ESTADO = { completado: '✓', en_proceso: '●', en_porteria: '●', confirmado: '◆', cancelado: '✕', programado: '' };
+
 const PUNTO_TIPO = {
-  recepcion: 'bg-blue-500',
-  despacho: 'bg-amber-500',
+  recepcion: 'bg-tinta',
+  despacho: 'bg-[#7A3E0C]',
 };
 
 export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, onRango, agregar, actualizar, eliminar, buscarConflictos }) {
@@ -165,28 +175,28 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             </>
           )}
         </div>
-        <h2 className="text-lg font-semibold text-gray-800">
+        <h2 className="font-mono text-lg font-medium uppercase tracking-wide text-tinta">
           {vista === 'dia' && capitalizar(etiquetaFechaLarga(diaReferencia))}
           {vista === 'semana' && etiquetaRango(dias[0], dias[6])}
           {vista === 'mes' && etiquetaMes(mesReferencia)}
         </h2>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg bg-gray-100 p-1">
+          <div className="flex border border-tinta">
             <button
               onClick={() => setVista('dia')}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${vista === 'dia' ? 'bg-white text-[#C42B2B] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`min-h-[40px] px-4 text-sm font-medium transition ${'dia' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'dia' ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'}`}
             >
               Día
             </button>
             <button
               onClick={() => setVista('semana')}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${vista === 'semana' ? 'bg-white text-[#C42B2B] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`min-h-[40px] px-4 text-sm font-medium transition ${'semana' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'semana' ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'}`}
             >
               Semana
             </button>
             <button
               onClick={() => setVista('mes')}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${vista === 'mes' ? 'bg-white text-[#C42B2B] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`min-h-[40px] px-4 text-sm font-medium transition ${'mes' !== 'dia' ? 'border-l border-tinta' : ''} ${vista === 'mes' ? 'bg-tinta text-papel' : 'text-tinta hover:bg-tinta/5'}`}
             >
               Mes
             </button>
@@ -197,23 +207,30 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
         </div>
       </div>
 
-      <div className="mb-3 flex items-center gap-4 text-xs text-gray-600 no-print">
+      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-tinta pt-2 font-mono text-[11px] uppercase tracking-wide text-gray-600 no-print">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded border border-blue-400 bg-blue-100" /> Recepción
+          <span className="h-2.5 w-3.5 border border-tinta bg-[#D7E0F0]" /> Recepción
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded border border-amber-500 bg-amber-100" /> Despacho
+          <span className="h-2.5 w-3.5 border border-[#7A3E0C] bg-[#F3DCC2]" /> Despacho
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 border border-tinta bg-tinta" /> ● En portería / descargando
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 border border-dashed border-gray-400" /> ✓ Completado
+        </span>
+        <span>◆ Confirmado</span>
       </div>
 
       {vista === 'dia' && (
         <Card className="overflow-hidden">
           <div className="relative grid grid-cols-[60px_1fr]" style={{ height: `${ALTO_TOTAL_DIA}px` }}>
-            <div className="relative border-r border-gray-200">
+            <div className="relative border-r border-gray-300">
               {horas.map((h) => (
                 <div
                   key={h}
-                  className="absolute right-1 -translate-y-2 text-xs text-gray-400"
+                  className={`absolute right-1.5 font-mono text-[11px] text-gray-500 ${h === HORA_INICIO ? 'translate-y-1' : '-translate-y-2'}`}
                   style={{ top: `${(h - HORA_INICIO) * 60 * PX_POR_MIN_DIA}px` }}
                 >
                   {String(h).padStart(2, '0')}:00
@@ -225,7 +242,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
               {horas.map((h) => (
                 <div
                   key={h}
-                  className="absolute w-full border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  className="absolute w-full cursor-pointer border-t border-gray-200 hover:bg-tinta/5"
                   style={{ top: `${(h - HORA_INICIO) * 60 * PX_POR_MIN_DIA}px`, height: `${60 * PX_POR_MIN_DIA}px` }}
                   onClick={() => abrirNuevo(diaReferencia, `${String(h).padStart(2, '0')}:00`)}
                   title="Click para agendar un camión"
@@ -234,7 +251,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
 
               {eventosPorFecha[diaReferencia]?.map((ev) => {
                 const estado = estadoInfo(ev.estado);
-                const estiloTipo = ESTILOS_TIPO[ev.tipo] || ESTILOS_TIPO.recepcion;
+                const estiloTipo = estiloEvento(ev);
                 const esProveedor = ev.tipo === 'recepcion';
                 return (
                   <button
@@ -243,14 +260,16 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       e.stopPropagation();
                       abrirExistente(ev);
                     }}
-                    className={`absolute left-1 right-1 z-10 overflow-hidden rounded-md border px-2 py-1 text-left text-xs leading-tight shadow-sm hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                    className={`absolute left-1 right-1 z-10 overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                     style={posicionEvento(ev, PX_POR_MIN_DIA)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold">
-                        {ev.horaInicio}–{horaFin(ev)} · {tipoInfo(ev.tipo).label}
+                      <span className="font-bold">
+                        <span className="font-mono font-normal">{ev.horaInicio}–{horaFin(ev)}</span> · {tipoInfo(ev.tipo).label}
                       </span>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${estado.color}`}>{estado.label}</span>
+                      <span className="font-mono text-[10px] uppercase">
+                        {MARCA_ESTADO[ev.estado]} {estado.label}
+                      </span>
                     </div>
                     {ev.proveedorCliente && (
                       <div className="truncate">
@@ -275,12 +294,12 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
 
       {vista === 'semana' && (
         <Card className="overflow-hidden">
-          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-gray-200 text-sm font-medium text-gray-600">
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-tinta font-mono text-xs uppercase tracking-wide text-tinta">
             <div />
             {dias.map((dia) => (
               <div
                 key={dia}
-                className={`border-l border-gray-200 px-2 py-2 text-center ${esHoy(dia) ? 'bg-red-50 text-[#C42B2B] font-semibold' : ''}`}
+                className={`border-l border-gray-300 px-2 py-2 text-center ${esHoy(dia) ? 'bg-tinta font-medium text-papel' : ''}`}
               >
                 {etiquetaDia(dia)}
               </div>
@@ -288,11 +307,11 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
           </div>
 
           <div className="relative grid grid-cols-[60px_repeat(7,1fr)]" style={{ height: `${ALTO_TOTAL}px` }}>
-            <div className="relative border-r border-gray-200">
+            <div className="relative border-r border-gray-300">
               {horas.map((h) => (
                 <div
                   key={h}
-                  className="absolute right-1 -translate-y-2 text-xs text-gray-400"
+                  className={`absolute right-1.5 font-mono text-[11px] text-gray-500 ${h === HORA_INICIO ? 'translate-y-1' : '-translate-y-2'}`}
                   style={{ top: `${(h - HORA_INICIO) * 60 * PX_POR_MIN}px` }}
                 >
                   {String(h).padStart(2, '0')}:00
@@ -301,11 +320,11 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             </div>
 
             {dias.map((dia) => (
-              <div key={dia} className="relative border-l border-gray-200" onDoubleClick={() => abrirNuevo(dia, '09:00')}>
+              <div key={dia} className={`relative border-l border-gray-300 ${esHoy(dia) ? 'bg-tinta/[0.03]' : ''}`} onDoubleClick={() => abrirNuevo(dia, '09:00')}>
                 {horas.map((h) => (
                   <div
                     key={h}
-                    className="absolute w-full border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    className="absolute w-full cursor-pointer border-t border-gray-200 hover:bg-tinta/5"
                     style={{ top: `${(h - HORA_INICIO) * 60 * PX_POR_MIN}px`, height: `${60 * PX_POR_MIN}px` }}
                     onClick={() => abrirNuevo(dia, `${String(h).padStart(2, '0')}:00`)}
                     title="Click para agendar un camión"
@@ -314,7 +333,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
 
                 {eventosPorFecha[dia]?.map((ev) => {
                   const estado = estadoInfo(ev.estado);
-                  const estiloTipo = ESTILOS_TIPO[ev.tipo] || ESTILOS_TIPO.recepcion;
+                  const estiloTipo = estiloEvento(ev);
                   return (
                     <button
                       key={ev.id}
@@ -322,15 +341,15 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                         e.stopPropagation();
                         abrirExistente(ev);
                       }}
-                      className={`absolute left-0.5 right-0.5 z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left text-[11px] leading-tight shadow-sm hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                      className={`absolute left-1 right-1 z-10 overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                       style={posicionEvento(ev)}
                     >
-                      <div className="font-semibold">
-                        {ev.horaInicio}–{horaFin(ev)} · {tipoInfo(ev.tipo).label}
+                      <div className="font-mono text-[10px]">
+                        {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[ev.estado]}
                       </div>
-                      {ev.proveedorCliente && <div className="truncate">{ev.proveedorCliente}</div>}
-                      {ev.material && <div className="truncate opacity-80">{ev.material}</div>}
-                      <div className={`mt-0.5 inline-block rounded px-1 text-[10px] ${estado.color}`}>{estado.label}</div>
+                      <div className="truncate font-bold">{ev.material || tipoInfo(ev.tipo).label}</div>
+                      {ev.proveedorCliente && <div className="truncate opacity-80">{ev.proveedorCliente}</div>}
+                      <span className="sr-only">{estado.label}</span>
                     </button>
                   );
                 })}
@@ -342,9 +361,9 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
 
       {vista === 'mes' && (
         <Card className="overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-gray-200 text-sm font-medium text-gray-600">
+          <div className="grid grid-cols-7 border-b border-tinta font-mono text-xs uppercase tracking-wide text-tinta">
             {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => (
-              <div key={d} className="border-l border-gray-200 px-2 py-2 text-center first:border-l-0">
+              <div key={d} className="border-l border-gray-300 px-2 py-2 text-center first:border-l-0">
                 {d}
               </div>
             ))}
@@ -361,15 +380,15 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                   <div
                     key={dia}
                     onClick={() => abrirNuevo(dia, '09:00')}
-                    className={`cursor-pointer border-l border-gray-100 p-1.5 first:border-l-0 hover:bg-gray-50 ${fueraDeMes ? 'bg-gray-50/60' : ''}`}
+                    className={`cursor-pointer border-l border-gray-200 p-1.5 first:border-l-0 hover:bg-tinta/5 ${fueraDeMes ? 'bg-gray-100/60' : ''}`}
                   >
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         verDia(dia);
                       }}
-                      className={`mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs hover:ring-2 hover:ring-[#C42B2B]/40 ${
-                        esHoy(dia) ? 'bg-[#C42B2B] font-semibold text-white' : fueraDeMes ? 'text-gray-400' : 'text-gray-700'
+                      className={`mb-1 inline-flex h-7 min-w-[28px] items-center justify-center px-1 font-mono text-xs hover:ring-1 hover:ring-tinta ${
+                        esHoy(dia) ? 'bg-tinta font-medium text-papel' : fueraDeMes ? 'text-gray-400' : 'text-tinta'
                       }`}
                       title="Ver este día"
                     >
@@ -383,12 +402,12 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                             e.stopPropagation();
                             abrirExistente(ev);
                           }}
-                          className={`flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight hover:opacity-80 ${
+                          className={`flex w-full items-center gap-1 truncate border px-1 py-0.5 text-left text-[10px] leading-tight hover:opacity-80 ${
                             ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''
-                          } ${ev.tipo === 'despacho' ? 'bg-amber-50 text-amber-900' : 'bg-blue-50 text-blue-900'}`}
+                          } ${estiloEvento(ev)}`}
                         >
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${PUNTO_TIPO[ev.tipo] || PUNTO_TIPO.recepcion}`} />
-                          <span className="shrink-0">{ev.horaInicio}</span>
+                          <span className={`h-1.5 w-1.5 shrink-0 ${PUNTO_TIPO[ev.tipo] || PUNTO_TIPO.recepcion}`} />
+                          <span className="shrink-0 font-mono">{ev.horaInicio}</span>
                           <span className="truncate">{ev.proveedorCliente || tipoInfo(ev.tipo).label}</span>
                         </button>
                       ))}
@@ -398,7 +417,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                             e.stopPropagation();
                             verDia(dia);
                           }}
-                          className="w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-gray-500 hover:text-[#C42B2B]"
+                          className="w-full truncate px-1 py-0.5 text-left font-mono text-[10px] text-gray-500 hover:text-tinta hover:underline"
                         >
                           +{restantes} más
                         </button>

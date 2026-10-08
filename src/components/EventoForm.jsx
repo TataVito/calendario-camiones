@@ -105,7 +105,7 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
       </div>
 
       {conflictos.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="rounded-lg border border-[#B07A1E] bg-[#F6EBD4] px-3 py-2 text-sm text-[#5C3D06]">
           ⚠️ Choca con el espacio de carga/descarga:{' '}
           {conflictos
             .map((c) => `${tipoInfo(c.tipo).label}${c.proveedorCliente ? ` (${c.proveedorCliente})` : ''} ${c.horaInicio}–${horaFin(c)}`)
@@ -158,7 +158,7 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
         </p>
       )}
       {!esAdmin && datos.estado === 'completado' && evento?.estado !== 'completado' && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="border border-[#B07A1E] bg-[#F6EBD4] text-[#5C3D06] px-3 py-2 text-sm">
           Al guardarlo como <b>Completado</b> ya no podrás modificarlo ni eliminarlo; solo un administrador.
         </p>
       )}

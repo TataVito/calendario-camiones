@@ -17,7 +17,8 @@ async function comprimir(archivo) {
 
 // Fotos de la guía de un camión. Las guarda en el bucket privado 'guias' y las muestra
 // con enlaces firmados de 1 hora (nadie sin sesión ni sin acceso a la obra las ve).
-export default function FotosGuia({ evento, puedeSubir, puedeBorrar }) {
+// oscuro: versión para la pantalla de Portería (estilo Faena).
+export default function FotosGuia({ evento, puedeSubir, puedeBorrar, oscuro = false }) {
   const [fotos, setFotos] = useState([]);
   const [urls, setUrls] = useState({});
   const [estado, setEstado] = useState('');
@@ -81,23 +82,34 @@ export default function FotosGuia({ evento, puedeSubir, puedeBorrar }) {
   if (!fotos.length && !puedeSubir) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
+    <div className={oscuro ? 'rounded-md bg-[#15171A] p-3' : 'border border-gray-300 p-3'}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-gray-700">Fotos de la guía {fotos.length > 0 && `(${fotos.length})`}</span>
+        <span className={oscuro ? 'text-sm font-semibold uppercase tracking-wider text-[#C9CCD1]' : 'font-mono text-[11px] uppercase tracking-wide text-gray-500'}>
+          Fotos de la guía {fotos.length > 0 && `(${fotos.length})`}
+        </span>
         {puedeSubir && (
           <>
             <input ref={entrada} type="file" accept="image/*" capture="environment" multiple hidden onChange={subir} />
-            <Button type="button" variant="secondary" onClick={() => entrada.current.click()}>
-              📷 Agregar foto
+            <Button
+              type="button"
+              variant="secondary"
+              className={oscuro ? 'min-h-[48px] rounded-md border-0 bg-[#F5C518] font-bold uppercase text-[#15171A] hover:bg-[#FFD84D]' : ''}
+              onClick={() => entrada.current.click()}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+                <circle cx="12" cy="13" r="3.5" />
+              </svg>
+              Agregar foto
             </Button>
           </>
         )}
       </div>
-      {estado && <p className="mb-2 text-sm text-gray-600">{estado}</p>}
+      {estado && <p className={`mb-2 text-sm ${oscuro ? 'text-[#C9CCD1]' : 'text-gray-600'}`}>{estado}</p>}
       {fotos.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {fotos.map((f) => (
-            <button key={f.id} type="button" onClick={() => setAmpliada(f)} className="overflow-hidden rounded border border-gray-200">
+            <button key={f.id} type="button" onClick={() => setAmpliada(f)} className={`overflow-hidden border ${oscuro ? 'rounded-md border-[#3A3F46]' : 'border-gray-300'}`}>
               {urls[f.ruta] ? (
                 <img src={urls[f.ruta]} alt="Guía" className="h-20 w-20 object-cover" />
               ) : (

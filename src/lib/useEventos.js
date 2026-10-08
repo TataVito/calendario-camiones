@@ -41,12 +41,12 @@ function aFila(datos) {
 }
 
 export const ESTADOS = [
-  { value: 'programado', label: 'Programado', color: 'bg-gray-100 text-gray-700 border-gray-300' },
-  { value: 'confirmado', label: 'Confirmado', color: 'bg-sky-100 text-sky-700 border-sky-300' },
-  { value: 'en_porteria', label: 'En portería', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-  { value: 'en_proceso', label: 'En proceso (carga/descarga)', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-  { value: 'completado', label: 'Completado', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-  { value: 'cancelado', label: 'Cancelado', color: 'bg-red-100 text-red-700 border-red-300' },
+  { value: 'programado', label: 'Programado', color: 'bg-transparent text-gray-600 border-gray-400' },
+  { value: 'confirmado', label: 'Confirmado', color: 'bg-[#D7E0F0] text-tinta border-tinta' },
+  { value: 'en_porteria', label: 'En portería', color: 'bg-tinta/10 text-tinta border-tinta' },
+  { value: 'en_proceso', label: 'En proceso (carga/descarga)', color: 'bg-tinta text-papel border-tinta' },
+  { value: 'completado', label: 'Completado', color: 'bg-transparent text-[#2E6B4F] border-[#2E6B4F] border-dashed' },
+  { value: 'cancelado', label: 'Cancelado', color: 'bg-transparent text-[#B3261E] border-[#B3261E] line-through' },
 ];
 
 export const TIPOS = [

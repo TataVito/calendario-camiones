@@ -1,14 +1,17 @@
+// Componentes base con el estilo "Plano técnico": papel, tinta azul marino, líneas finas y esquinas rectas.
+
 export function Card({ children, className = '' }) {
-  return <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>{children}</div>;
+  return <div className={`bg-white border border-gray-300 ${className}`}>{children}</div>;
 }
 
 export function Button({ children, variant = 'primary', className = '', ...props }) {
-  const base = 'inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed';
+  const base =
+    'inline-flex min-h-[40px] items-center justify-center gap-1.5 px-3.5 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta';
   const variants = {
-    primary: 'bg-[#C42B2B] text-white hover:bg-[#A01F24]',
-    secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-    ghost: 'text-gray-600 hover:bg-gray-100',
-    danger: 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200',
+    primary: 'bg-[#B3261E] font-bold text-white hover:bg-[#8E1E18]',
+    secondary: 'border border-tinta bg-transparent text-tinta hover:bg-tinta/5',
+    ghost: 'text-tinta underline-offset-4 hover:underline',
+    danger: 'border border-[#B3261E] bg-transparent text-[#B3261E] hover:bg-[#B3261E]/5',
   };
   return (
     <button className={`${base} ${variants[variant] || variants.primary} ${className}`} {...props}>
@@ -19,7 +22,7 @@ export function Button({ children, variant = 'primary', className = '', ...props
 
 export function Badge({ children, className = '' }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${className}`}>
+    <span className={`inline-flex items-center border px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide whitespace-nowrap ${className}`}>
       {children}
     </span>
   );
@@ -28,9 +31,9 @@ export function Badge({ children, className = '' }) {
 export function Field({ label, children, hint, required }) {
   return (
     <label className="block text-sm">
-      <span className="mb-1 block font-medium text-gray-700">
+      <span className="mb-1 block font-mono text-[11px] uppercase tracking-wide text-gray-500">
         {label}
-        {required && <span className="text-red-600"> *</span>}
+        {required && <span className="text-[#B3261E]"> *</span>}
       </span>
       {children}
       {hint && <span className="mt-1 block text-xs text-gray-500">{hint}</span>}
@@ -38,41 +41,29 @@ export function Field({ label, children, hint, required }) {
   );
 }
 
+const CAMPO =
+  'w-full min-h-[40px] border border-gray-300 bg-white px-3 py-2 text-sm text-tinta focus:border-tinta focus:outline-none focus:ring-1 focus:ring-tinta disabled:bg-gray-100 disabled:text-gray-500';
+
 export function Input(props) {
-  return (
-    <input
-      {...props}
-      className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#C42B2B] focus:outline-none focus:ring-1 focus:ring-[#C42B2B] ${props.className || ''}`}
-    />
-  );
+  return <input {...props} className={`${CAMPO} ${props.className || ''}`} />;
 }
 
 export function Select(props) {
-  return (
-    <select
-      {...props}
-      className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#C42B2B] focus:outline-none focus:ring-1 focus:ring-[#C42B2B] ${props.className || ''}`}
-    />
-  );
+  return <select {...props} className={`${CAMPO} ${props.className || ''}`} />;
 }
 
 export function Textarea(props) {
-  return (
-    <textarea
-      {...props}
-      className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#C42B2B] focus:outline-none focus:ring-1 focus:ring-[#C42B2B] ${props.className || ''}`}
-    />
-  );
+  return <textarea {...props} className={`${CAMPO} ${props.className || ''}`} />;
 }
 
 export function Modal({ open, onClose, title, children, wide }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 no-print">
-      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl`}>
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4 no-print">
+      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[90vh] overflow-y-auto border border-tinta bg-white shadow-xl`}>
+        <div className="flex items-center justify-between bg-tinta px-5 py-3 text-papel">
+          <h3 className="text-base font-bold">{title}</h3>
+          <button onClick={onClose} aria-label="Cerrar" className="flex h-9 w-9 items-center justify-center text-papel/80 hover:bg-white/10 hover:text-papel">
             ✕
           </button>
         </div>
