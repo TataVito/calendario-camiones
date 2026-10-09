@@ -8,6 +8,11 @@ const LLAVE = process.env.SUPABASE_SECRET_KEY;
 const cabeceras = { apikey: LLAVE, ...(LLAVE.startsWith('eyJ') ? { Authorization: `Bearer ${LLAVE}` } : {}) };
 
 const r = await fetch(`${URL_BASE}/rest/v1/evento_fotos?select=ruta&order=subido_en`, { headers: cabeceras });
+if (r.status === 401 || r.status === 403) {
+  throw new Error(
+    'La llave SUPABASE_SECRET_KEY no tiene permisos de servidor: hay que usar la "secret key" (sb_secret_...) o la "service_role", no la publishable/anon.',
+  );
+}
 if (!r.ok) throw new Error(`No se pudo leer la lista de fotos: HTTP ${r.status} ${await r.text()}`);
 const fotos = await r.json();
 
