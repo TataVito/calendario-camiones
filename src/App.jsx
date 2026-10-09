@@ -105,14 +105,17 @@ function Principal({ sesion }) {
                 <span className="font-mono text-[11px] tracking-wider text-gray-500">RVC CONSTRUCTORA · CAM-01</span>
               </div>
             </div>
-            <nav className="flex w-fit max-w-full flex-wrap border border-tinta">
+            {/* Celular: grilla de 2 columnas con líneas continuas (las líneas son el fondo que asoma
+                entre celdas); si sobra una pestaña, ocupa todo el ancho. Escritorio: una sola fila. */}
+            <nav className="grid w-full grid-cols-2 gap-px border border-tinta bg-tinta md:flex md:w-fit">
               {tabs.map((t, i) => (
                 <button
                   key={t.value}
                   onClick={() => setTab(t.value)}
-                  className={`min-h-[40px] px-4 text-sm font-medium transition ${i > 0 ? 'border-l border-tinta' : ''} ${
-                    tab === t.value ? 'bg-rvc text-white' : 'text-tinta hover:bg-rvc/5'
-                  }`}
+                  aria-current={tab === t.value ? 'page' : undefined}
+                  className={`min-h-[44px] px-4 text-sm font-medium transition ${
+                    tabs.length % 2 === 1 && i === tabs.length - 1 ? 'col-span-2' : ''
+                  } ${tab === t.value ? 'bg-rvc font-bold text-white' : 'bg-white text-tinta hover:bg-[#FBEBEC]'}`}
                 >
                   {t.label}
                 </button>
