@@ -63,6 +63,7 @@ export const FORMAS_DESCARGA = [
   { value: 'grua_horquilla', label: 'Grúa horquilla' },
   { value: 'grua_torre', label: 'Grúa torre' },
   { value: 'grua_auxiliar', label: 'Grúa auxiliar' },
+  { value: 'bomba_hormigon', label: 'Bomba de hormigón' },
 ];
 
 export function formaDescargaInfo(value) {
