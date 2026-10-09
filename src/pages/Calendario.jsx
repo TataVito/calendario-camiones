@@ -51,7 +51,8 @@ const PUNTO_TIPO = {
 };
 
 export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, onRango, agregar, actualizar, eliminar, buscarConflictos }) {
-  const [vista, setVista] = useState('semana'); // 'dia' | 'semana' | 'mes'
+  // En el celular la semana de 7 columnas no cabe: se abre en vista Día.
+  const [vista, setVista] = useState(() => (window.innerWidth < 640 ? 'dia' : 'semana')); // 'dia' | 'semana' | 'mes'
   const [diaReferencia, setDiaReferencia] = useState(hoyISO());
   const [semanaInicio, setSemanaInicio] = useState(() => inicioSemana(hoyISO()));
   const [mesReferencia, setMesReferencia] = useState(() => primerDiaMes(hoyISO()));
@@ -137,40 +138,40 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
         <div className="flex items-center gap-2">
           {vista === 'dia' && (
             <>
-              <Button variant="secondary" onClick={() => setDiaReferencia((d) => sumarDias(d, -1))}>
-                ← Día anterior
+              <Button variant="secondary" aria-label="Día anterior" onClick={() => setDiaReferencia((d) => sumarDias(d, -1))}>
+                ←<span className="hidden sm:inline"> Día anterior</span>
               </Button>
               <Button variant="secondary" onClick={irAHoy}>
                 Hoy
               </Button>
-              <Button variant="secondary" onClick={() => setDiaReferencia((d) => sumarDias(d, 1))}>
-                Día siguiente →
+              <Button variant="secondary" aria-label="Día siguiente" onClick={() => setDiaReferencia((d) => sumarDias(d, 1))}>
+                <span className="hidden sm:inline">Día siguiente </span>→
               </Button>
             </>
           )}
           {vista === 'semana' && (
             <>
-              <Button variant="secondary" onClick={() => setSemanaInicio((s) => sumarDias(s, -7))}>
-                ← Semana anterior
+              <Button variant="secondary" aria-label="Semana anterior" onClick={() => setSemanaInicio((s) => sumarDias(s, -7))}>
+                ←<span className="hidden sm:inline"> Semana anterior</span>
               </Button>
               <Button variant="secondary" onClick={irAHoy}>
                 Hoy
               </Button>
-              <Button variant="secondary" onClick={() => setSemanaInicio((s) => sumarDias(s, 7))}>
-                Semana siguiente →
+              <Button variant="secondary" aria-label="Semana siguiente" onClick={() => setSemanaInicio((s) => sumarDias(s, 7))}>
+                <span className="hidden sm:inline">Semana siguiente </span>→
               </Button>
             </>
           )}
           {vista === 'mes' && (
             <>
-              <Button variant="secondary" onClick={() => setMesReferencia((m) => sumarMeses(m, -1))}>
-                ← Mes anterior
+              <Button variant="secondary" aria-label="Mes anterior" onClick={() => setMesReferencia((m) => sumarMeses(m, -1))}>
+                ←<span className="hidden sm:inline"> Mes anterior</span>
               </Button>
               <Button variant="secondary" onClick={irAHoy}>
                 Hoy
               </Button>
-              <Button variant="secondary" onClick={() => setMesReferencia((m) => sumarMeses(m, 1))}>
-                Mes siguiente →
+              <Button variant="secondary" aria-label="Mes siguiente" onClick={() => setMesReferencia((m) => sumarMeses(m, 1))}>
+                <span className="hidden sm:inline">Mes siguiente </span>→
               </Button>
             </>
           )}

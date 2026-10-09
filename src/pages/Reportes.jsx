@@ -55,7 +55,7 @@ function Tile({ titulo, valor, detalle }) {
   return (
     <Card className="p-3">
       <div className="font-mono text-[10px] uppercase tracking-wide text-gray-500">{titulo}</div>
-      <div className="font-mono text-2xl font-medium text-tinta">{valor}</div>
+      <div className="text-2xl font-bold tabular-nums text-tinta">{valor}</div>
       {detalle && <div className="text-xs text-gray-500">{detalle}</div>}
     </Card>
   );

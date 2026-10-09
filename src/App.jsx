@@ -203,15 +203,15 @@ function Principal({ sesion }) {
             <div className={`mb-5 grid grid-cols-2 border border-tinta bg-white no-print md:grid-cols-4 ${enPorteria || tab === 'reportes' ? 'hidden' : ''}`}>
               <div className="border-b border-r border-gray-300 px-4 py-2 md:border-b-0">
                 <div className="font-mono text-[10px] text-gray-500">RECEPCIONES HOY</div>
-                <div className="font-mono text-2xl font-medium">{resumenHoy.recepciones}</div>
+                <div className="text-2xl font-bold tabular-nums">{resumenHoy.recepciones}</div>
               </div>
               <div className="border-b border-gray-300 px-4 py-2 md:border-b-0 md:border-r">
                 <div className="font-mono text-[10px] text-gray-500">DESPACHOS HOY</div>
-                <div className="font-mono text-2xl font-medium">{resumenHoy.despachos}</div>
+                <div className="text-2xl font-bold tabular-nums">{resumenHoy.despachos}</div>
               </div>
               <div className="border-r border-gray-300 px-4 py-2">
                 <div className="font-mono text-[10px] text-gray-500">EN PORTERÍA / DESCARGANDO</div>
-                <div className="font-mono text-2xl font-medium">{resumenHoy.enProceso}</div>
+                <div className="text-2xl font-bold tabular-nums">{resumenHoy.enProceso}</div>
               </div>
               <div className="px-4 py-2">
                 <div className="font-mono text-[10px] text-gray-500">PRÓXIMO CAMIÓN</div>
