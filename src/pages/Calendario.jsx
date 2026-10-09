@@ -93,50 +93,80 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
     return !autenticado || (evento.estado === 'completado' && !esAdmin);
   }
 
-  // Arrastrar para reprogramar (escritorio): solo camiones aún no llegados. La base vuelve a
-  // revisar fechas pasadas, completados y choques; si rechaza, el aviso aparece arriba.
+  // Arrastrar para reprogramar (mouse o lápiz; en pantallas táctiles no, para no mover camiones
+  // al desplazar). Solo camiones aún no llegados. La base vuelve a revisar fechas pasadas,
+  // completados y choques; si rechaza, el aviso aparece arriba.
   const arrastre = useRef(null);
-  const [destino, setDestino] = useState(null);
+  const [destino, setDestino] = useState(null); // { dia, hora, x, y }
 
   function sePuedeMover(ev) {
     return !soloLectura(ev) && (ev.estado === 'programado' || ev.estado === 'confirmado');
   }
 
-  function empezarArrastre(e, ev, pxPorMin) {
-    const caja = e.currentTarget.getBoundingClientRect();
-    arrastre.current = { ev, desfaseMin: pxPorMin ? (e.clientY - caja.top) / pxPorMin : 0 };
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', ev.id);
-  }
-
-  function permitirSoltar(e, dia) {
-    if (!arrastre.current) return;
-    if (!esAdmin && dia < hoyISO()) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (destino !== dia) setDestino(dia);
-  }
-
-  function soltar(e, dia, pxPorMin) {
-    e.preventDefault();
-    setDestino(null);
+  // Día y hora bajo el puntero. Las columnas llevan data-dia y data-px (px por minuto; 0 = mes).
+  function calcularDestino(x, y) {
     const a = arrastre.current;
-    arrastre.current = null;
-    if (!a) return;
-    let horaInicio = a.ev.horaInicio;
-    if (pxPorMin) {
-      const caja = e.currentTarget.getBoundingClientRect();
-      const bruto = HORA_INICIO * 60 + (e.clientY - caja.top) / pxPorMin - a.desfaseMin;
+    const col = document.elementFromPoint(x, y)?.closest('[data-dia]');
+    if (!a || !col) return null;
+    const dia = col.dataset.dia;
+    if (!esAdmin && dia < hoyISO()) return null;
+    const px = Number(col.dataset.px);
+    let hora = a.ev.horaInicio;
+    if (px) {
+      const caja = col.getBoundingClientRect();
+      const bruto = HORA_INICIO * 60 + (y - caja.top) / px - a.desfaseMin;
       const min = Math.min(Math.max(Math.round(bruto / 15) * 15, HORA_INICIO * 60), HORA_FIN * 60 - Number(a.ev.duracionMin));
-      horaInicio = `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+      hora = `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
     }
-    if (dia === a.ev.fecha && horaInicio === a.ev.horaInicio) return;
-    actualizar(a.ev.id, { fecha: dia, horaInicio });
+    return { dia, hora };
   }
 
-  function terminarArrastre() {
-    arrastre.current = null;
-    setDestino(null);
+  function empezarArrastre(e, ev, pxPorMin) {
+    if (!sePuedeMover(ev) || e.button !== 0 || e.pointerType === 'touch') return;
+    const caja = e.currentTarget.getBoundingClientRect();
+    arrastre.current = { ev, desfaseMin: pxPorMin ? (e.clientY - caja.top) / pxPorMin : 0, x0: e.clientX, y0: e.clientY, moviendo: false };
+
+    const mover = (m) => {
+      const a = arrastre.current;
+      if (!a) return;
+      if (!a.moviendo && Math.hypot(m.clientX - a.x0, m.clientY - a.y0) < 6) return;
+      a.moviendo = true;
+      m.preventDefault();
+      const d = calcularDestino(m.clientX, m.clientY);
+      setDestino(d ? { ...d, x: m.clientX, y: m.clientY } : null);
+    };
+    const soltar = (u) => {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+      window.removeEventListener('pointercancel', cancelar);
+      const a = arrastre.current;
+      setDestino(null);
+      if (!a?.moviendo) {
+        arrastre.current = null;
+        return;
+      }
+      // El clic que sigue a soltar no debe abrir el camión.
+      a.recienSoltado = true;
+      setTimeout(() => (arrastre.current = null), 0);
+      const d = calcularDestino(u.clientX, u.clientY);
+      if (!d || (d.dia === a.ev.fecha && d.hora === a.ev.horaInicio)) return;
+      actualizar(a.ev.id, { fecha: d.dia, horaInicio: d.hora });
+    };
+    const cancelar = () => {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+      window.removeEventListener('pointercancel', cancelar);
+      arrastre.current = null;
+      setDestino(null);
+    };
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', soltar);
+    window.addEventListener('pointercancel', cancelar);
+  }
+
+  function abrirSiNoSeArrastro(ev) {
+    if (arrastre.current?.recienSoltado) return;
+    abrirExistente(ev);
   }
 
   function abrirExistente(evento) {
@@ -289,11 +319,10 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             </div>
 
             <div
-              className={`relative ${destino === diaReferencia ? 'bg-rvc/[0.06]' : ''}`}
+              className={`relative ${destino?.dia === diaReferencia ? 'bg-rvc/[0.06]' : ''}`}
+              data-dia={diaReferencia}
+              data-px={PX_POR_MIN_DIA}
               onDoubleClick={() => abrirNuevo(diaReferencia, '09:00')}
-              onDragOver={(e) => permitirSoltar(e, diaReferencia)}
-              onDragLeave={() => setDestino(null)}
-              onDrop={(e) => soltar(e, diaReferencia, PX_POR_MIN_DIA)}
             >
               {horas.map((h) => (
                 <div
@@ -312,15 +341,13 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                 return (
                   <button
                     key={ev.id}
-                    draggable={sePuedeMover(ev)}
-                    onDragStart={(e) => empezarArrastre(e, ev, PX_POR_MIN_DIA)}
-                    onDragEnd={terminarArrastre}
+                    onPointerDown={(e) => empezarArrastre(e, ev, PX_POR_MIN_DIA)}
                     title={sePuedeMover(ev) ? 'Arrastrá para cambiar la hora' : undefined}
                     onClick={(e) => {
                       e.stopPropagation();
-                      abrirExistente(ev);
+                      abrirSiNoSeArrastro(ev);
                     }}
-                    className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab active:cursor-grabbing' : ''} overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                    className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                     style={posicionEvento(ev, PX_POR_MIN_DIA)}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -382,11 +409,10 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             {dias.map((dia) => (
               <div
                 key={dia}
-                className={`relative border-l border-gray-300 ${destino === dia ? 'bg-rvc/[0.08]' : esHoy(dia) ? 'bg-rvc/[0.04]' : ''}`}
+                className={`relative border-l border-gray-300 ${destino?.dia === dia ? 'bg-rvc/[0.08]' : esHoy(dia) ? 'bg-rvc/[0.04]' : ''}`}
+                data-dia={dia}
+                data-px={PX_POR_MIN}
                 onDoubleClick={() => abrirNuevo(dia, '09:00')}
-                onDragOver={(e) => permitirSoltar(e, dia)}
-                onDragLeave={() => setDestino(null)}
-                onDrop={(e) => soltar(e, dia, PX_POR_MIN)}
               >
                 {horas.map((h) => (
                   <div
@@ -404,15 +430,13 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                   return (
                     <button
                       key={ev.id}
-                      draggable={sePuedeMover(ev)}
-                      onDragStart={(e) => empezarArrastre(e, ev, PX_POR_MIN)}
-                      onDragEnd={terminarArrastre}
+                      onPointerDown={(e) => empezarArrastre(e, ev, PX_POR_MIN)}
                       title={sePuedeMover(ev) ? 'Arrastrá para cambiar el día o la hora' : undefined}
                       onClick={(e) => {
                         e.stopPropagation();
-                        abrirExistente(ev);
+                        abrirSiNoSeArrastro(ev);
                       }}
-                      className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab active:cursor-grabbing' : ''} overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                      className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                       style={posicionEvento(ev)}
                     >
                       <div className="font-mono text-[10px]">
@@ -451,10 +475,9 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                   <div
                     key={dia}
                     onClick={() => abrirNuevo(dia, '09:00')}
-                    onDragOver={(e) => permitirSoltar(e, dia)}
-                    onDragLeave={() => setDestino(null)}
-                    onDrop={(e) => soltar(e, dia, 0)}
-                    className={`cursor-pointer border-l border-gray-200 p-1.5 first:border-l-0 hover:bg-tinta/5 ${destino === dia ? 'bg-rvc/[0.08]' : fueraDeMes ? 'bg-gray-100/60' : ''}`}
+                    data-dia={dia}
+                    data-px="0"
+                    className={`cursor-pointer border-l border-gray-200 p-1.5 first:border-l-0 hover:bg-tinta/5 ${destino?.dia === dia ? 'bg-rvc/[0.08]' : fueraDeMes ? 'bg-gray-100/60' : ''}`}
                   >
                     <button
                       onClick={(e) => {
@@ -472,14 +495,12 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       {visibles.map((ev) => (
                         <button
                           key={ev.id}
-                          draggable={sePuedeMover(ev)}
-                          onDragStart={(e) => empezarArrastre(e, ev, 0)}
-                          onDragEnd={terminarArrastre}
+                          onPointerDown={(e) => empezarArrastre(e, ev, 0)}
                           onClick={(e) => {
                             e.stopPropagation();
-                            abrirExistente(ev);
+                            abrirSiNoSeArrastro(ev);
                           }}
-                          className={`flex w-full items-center gap-1 truncate border ${sePuedeMover(ev) ? 'cursor-grab' : ''} px-1 py-0.5 text-left text-[10px] leading-tight hover:opacity-80 ${
+                          className={`flex w-full items-center gap-1 truncate border ${sePuedeMover(ev) ? 'cursor-grab select-none' : ''} px-1 py-0.5 text-left text-[10px] leading-tight hover:opacity-80 ${
                             ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''
                           } ${estiloEvento(ev)}`}
                         >
@@ -506,6 +527,15 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             </div>
           ))}
         </Card>
+      )}
+
+      {destino && (
+        <div
+          className="pointer-events-none fixed z-50 border border-tinta bg-tinta px-2 py-1 font-mono text-xs text-white shadow-xl"
+          style={{ left: destino.x + 14, top: destino.y + 14 }}
+        >
+          {etiquetaDia(destino.dia)} · {destino.hora}
+        </div>
       )}
 
       <Modal
