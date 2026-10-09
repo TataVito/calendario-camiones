@@ -4,6 +4,7 @@ name: Respaldo semanal cifrado
 # AES-256 usando la clave RESPALDO_CLAVE. Se guarda 90 días como artefacto del workflow.
 # El repositorio es público: por eso el archivo va cifrado y solo se puede abrir con esa clave.
 # Restaurar: gpg -d respaldo.sql.gpg > respaldo.sql  (pide la clave) y psql "<url>" -f respaldo.sql
+# Fotos: gpg -d fotos-AAAA-MM-DD.tar.gz.gpg > fotos.tar.gz && tar -xzf fotos.tar.gz
 on:
   schedule:
     - cron: '23 6 * * 0'
@@ -52,8 +53,36 @@ jobs:
           shred -u respaldo.sql
           echo "FECHA=$fecha" >> "$GITHUB_ENV"
 
+      # Fotos de guías: requiere el secreto SUPABASE_SECRET_KEY (llave secreta de Supabase).
+      # Si no está, el respaldo de datos sigue igual y solo se avisa.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          path: repo
+      - name: Respaldar y cifrar fotos de guías
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          CLAVE: ${{ secrets.RESPALDO_CLAVE }}
+        run: |
+          if [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "::warning::Falta el secreto SUPABASE_SECRET_KEY: las fotos no se respaldaron (ver README)."
+            exit 0
+          fi
+          set -euo pipefail
+          umask 077
+          node repo/.github/scripts/respaldo-fotos.mjs
+          mkdir -p fotos
+          tar -czf fotos.tar.gz fotos
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$CLAVE"             --symmetric --cipher-algo AES256 -o "fotos-$FECHA.tar.gz.gpg" fotos.tar.gz
+          rm -rf fotos fotos.tar.gz
+          ls -la fotos-*.gpg
+
       - uses: actions/upload-artifact@v4
         with:
           name: respaldo-${{ env.FECHA }}
-          path: respaldo-*.sql.gpg
+          path: |
+            respaldo-*.sql.gpg
+            fotos-*.tar.gz.gpg
+          if-no-files-found: error
           retention-days: 90

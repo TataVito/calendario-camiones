@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase.js';
+import { guardarLocal, leerLocal } from './local.js';
 
 // La obra seleccionada es una preferencia de este navegador; las obras viven en Supabase.
 const ACTIVA_KEY = 'rvc_calendario_obra_activa_v1';
@@ -23,8 +24,16 @@ export function useObras() {
 
   const recargar = useCallback(async () => {
     const { data, error } = await supabase.from('obras').select('id, nombre, direccion').order('creado_en');
-    if (error) setError(error.message);
-    else setObras(data.map(aObra));
+    if (error) {
+      // Sin señal: la última lista conocida.
+      const local = leerLocal('obras');
+      if (local) setObras(local);
+      else setError(error.message);
+      return;
+    }
+    const lista = data.map(aObra);
+    setObras(lista);
+    guardarLocal('obras', lista);
   }, []);
 
   useEffect(() => {

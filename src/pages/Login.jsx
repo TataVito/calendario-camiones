@@ -5,6 +5,15 @@ export default function Login({ login }) {
   const [usuario, setUsuario] = useState('');
   const [clave, setClave] = useState('');
   const [error, setError] = useState('');
+  const [aviso] = useState(() => {
+    try {
+      const m = sessionStorage.getItem('rvc_motivo_salida');
+      sessionStorage.removeItem('rvc_motivo_salida');
+      return m || '';
+    } catch {
+      return '';
+    }
+  });
   const [enviando, setEnviando] = useState(false);
 
   async function submit(e) {
@@ -30,6 +39,7 @@ export default function Login({ login }) {
             <p className="text-xs text-gray-500">RVC Constructora — acceso restringido</p>
           </div>
         </div>
+        {aviso && <p className="mb-3 border border-[#B07A1E] bg-[#F6EBD4] px-3 py-2 text-sm text-[#5C3D06]">{aviso}</p>}
         <form onSubmit={submit} className="space-y-3">
           <Field label="Usuario" required>
             <Input

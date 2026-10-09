@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Modal } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
@@ -50,7 +50,7 @@ const PUNTO_TIPO = {
   despacho: 'bg-[#7A3E0C]',
 };
 
-export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, onRango, agregar, actualizar, eliminar, buscarConflictos }) {
+export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, onRango, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
   // En el celular la semana de 7 columnas no cabe: se abre en vista Día.
   const [vista, setVista] = useState(() => (window.innerWidth < 640 ? 'dia' : 'semana')); // 'dia' | 'semana' | 'mes'
   const [diaReferencia, setDiaReferencia] = useState(hoyISO());
@@ -93,6 +93,52 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
     return !autenticado || (evento.estado === 'completado' && !esAdmin);
   }
 
+  // Arrastrar para reprogramar (escritorio): solo camiones aún no llegados. La base vuelve a
+  // revisar fechas pasadas, completados y choques; si rechaza, el aviso aparece arriba.
+  const arrastre = useRef(null);
+  const [destino, setDestino] = useState(null);
+
+  function sePuedeMover(ev) {
+    return !soloLectura(ev) && (ev.estado === 'programado' || ev.estado === 'confirmado');
+  }
+
+  function empezarArrastre(e, ev, pxPorMin) {
+    const caja = e.currentTarget.getBoundingClientRect();
+    arrastre.current = { ev, desfaseMin: pxPorMin ? (e.clientY - caja.top) / pxPorMin : 0 };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ev.id);
+  }
+
+  function permitirSoltar(e, dia) {
+    if (!arrastre.current) return;
+    if (!esAdmin && dia < hoyISO()) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (destino !== dia) setDestino(dia);
+  }
+
+  function soltar(e, dia, pxPorMin) {
+    e.preventDefault();
+    setDestino(null);
+    const a = arrastre.current;
+    arrastre.current = null;
+    if (!a) return;
+    let horaInicio = a.ev.horaInicio;
+    if (pxPorMin) {
+      const caja = e.currentTarget.getBoundingClientRect();
+      const bruto = HORA_INICIO * 60 + (e.clientY - caja.top) / pxPorMin - a.desfaseMin;
+      const min = Math.min(Math.max(Math.round(bruto / 15) * 15, HORA_INICIO * 60), HORA_FIN * 60 - Number(a.ev.duracionMin));
+      horaInicio = `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+    }
+    if (dia === a.ev.fecha && horaInicio === a.ev.horaInicio) return;
+    actualizar(a.ev.id, { fecha: dia, horaInicio });
+  }
+
+  function terminarArrastre() {
+    arrastre.current = null;
+    setDestino(null);
+  }
+
   function abrirExistente(evento) {
     setModal({ evento });
   }
@@ -101,12 +147,15 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
     setModal(null);
   }
 
-  function guardar(datos) {
-    if (modal?.evento) {
-      actualizar(modal.evento.id, datos);
-    } else {
-      agregar(datos);
-    }
+  function guardar(datos, fechas) {
+    if (modal?.evento) actualizar(modal.evento.id, datos);
+    else if (fechas?.length > 1) agregarSerie(datos, fechas);
+    else agregar(datos);
+    cerrar();
+  }
+
+  function borrarSerie(evento) {
+    eliminarSerieDesde(evento);
     cerrar();
   }
 
@@ -239,7 +288,13 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
               ))}
             </div>
 
-            <div className="relative" onDoubleClick={() => abrirNuevo(diaReferencia, '09:00')}>
+            <div
+              className={`relative ${destino === diaReferencia ? 'bg-rvc/[0.06]' : ''}`}
+              onDoubleClick={() => abrirNuevo(diaReferencia, '09:00')}
+              onDragOver={(e) => permitirSoltar(e, diaReferencia)}
+              onDragLeave={() => setDestino(null)}
+              onDrop={(e) => soltar(e, diaReferencia, PX_POR_MIN_DIA)}
+            >
               {horas.map((h) => (
                 <div
                   key={h}
@@ -257,11 +312,15 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                 return (
                   <button
                     key={ev.id}
+                    draggable={sePuedeMover(ev)}
+                    onDragStart={(e) => empezarArrastre(e, ev, PX_POR_MIN_DIA)}
+                    onDragEnd={terminarArrastre}
+                    title={sePuedeMover(ev) ? 'Arrastrá para cambiar la hora' : undefined}
                     onClick={(e) => {
                       e.stopPropagation();
                       abrirExistente(ev);
                     }}
-                    className={`absolute left-1 right-1 z-10 overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                    className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab active:cursor-grabbing' : ''} overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                     style={posicionEvento(ev, PX_POR_MIN_DIA)}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -321,7 +380,14 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
             </div>
 
             {dias.map((dia) => (
-              <div key={dia} className={`relative border-l border-gray-300 ${esHoy(dia) ? 'bg-rvc/[0.04]' : ''}`} onDoubleClick={() => abrirNuevo(dia, '09:00')}>
+              <div
+                key={dia}
+                className={`relative border-l border-gray-300 ${destino === dia ? 'bg-rvc/[0.08]' : esHoy(dia) ? 'bg-rvc/[0.04]' : ''}`}
+                onDoubleClick={() => abrirNuevo(dia, '09:00')}
+                onDragOver={(e) => permitirSoltar(e, dia)}
+                onDragLeave={() => setDestino(null)}
+                onDrop={(e) => soltar(e, dia, PX_POR_MIN)}
+              >
                 {horas.map((h) => (
                   <div
                     key={h}
@@ -338,11 +404,15 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                   return (
                     <button
                       key={ev.id}
+                      draggable={sePuedeMover(ev)}
+                      onDragStart={(e) => empezarArrastre(e, ev, PX_POR_MIN)}
+                      onDragEnd={terminarArrastre}
+                      title={sePuedeMover(ev) ? 'Arrastrá para cambiar el día o la hora' : undefined}
                       onClick={(e) => {
                         e.stopPropagation();
                         abrirExistente(ev);
                       }}
-                      className={`absolute left-1 right-1 z-10 overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                      className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab active:cursor-grabbing' : ''} overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                       style={posicionEvento(ev)}
                     >
                       <div className="font-mono text-[10px]">
@@ -381,7 +451,10 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                   <div
                     key={dia}
                     onClick={() => abrirNuevo(dia, '09:00')}
-                    className={`cursor-pointer border-l border-gray-200 p-1.5 first:border-l-0 hover:bg-tinta/5 ${fueraDeMes ? 'bg-gray-100/60' : ''}`}
+                    onDragOver={(e) => permitirSoltar(e, dia)}
+                    onDragLeave={() => setDestino(null)}
+                    onDrop={(e) => soltar(e, dia, 0)}
+                    className={`cursor-pointer border-l border-gray-200 p-1.5 first:border-l-0 hover:bg-tinta/5 ${destino === dia ? 'bg-rvc/[0.08]' : fueraDeMes ? 'bg-gray-100/60' : ''}`}
                   >
                     <button
                       onClick={(e) => {
@@ -399,11 +472,14 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       {visibles.map((ev) => (
                         <button
                           key={ev.id}
+                          draggable={sePuedeMover(ev)}
+                          onDragStart={(e) => empezarArrastre(e, ev, 0)}
+                          onDragEnd={terminarArrastre}
                           onClick={(e) => {
                             e.stopPropagation();
                             abrirExistente(ev);
                           }}
-                          className={`flex w-full items-center gap-1 truncate border px-1 py-0.5 text-left text-[10px] leading-tight hover:opacity-80 ${
+                          className={`flex w-full items-center gap-1 truncate border ${sePuedeMover(ev) ? 'cursor-grab' : ''} px-1 py-0.5 text-left text-[10px] leading-tight hover:opacity-80 ${
                             ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''
                           } ${estiloEvento(ev)}`}
                         >
@@ -451,6 +527,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
               onGuardar={guardar}
               onCancelar={cerrar}
               onEliminar={borrar}
+              onEliminarSerie={borrarSerie}
               buscarConflictos={buscarConflictos}
             />
           ))}

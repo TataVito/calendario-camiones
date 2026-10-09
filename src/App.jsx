@@ -9,6 +9,7 @@ import { Button, Card } from './components/ui.jsx';
 import { useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
 import { useObras } from './lib/useObras.js';
 import { useSesion } from './lib/useSesion.js';
+import { LIMITE_INACTIVIDAD_MIN, useInactividad } from './lib/useInactividad.js';
 import { configurado } from './lib/supabase.js';
 import Login from './pages/Login.jsx';
 import { hoyISO } from './lib/fechas.js';
@@ -61,8 +62,27 @@ function Principal({ sesion }) {
     (nuevo) => setRango((r) => (r.desde === nuevo.desde && r.hasta === nuevo.hasta ? r : nuevo)),
     [],
   );
-  const { eventos, agregar, actualizar, eliminar, marcarPorteria, buscarConflictos, recargar, error: errorEventos, limpiarError: limpiarErrorEventos } =
-    useEventos(obraActivaId, rango);
+  const {
+    eventos,
+    agregar,
+    agregarSerie,
+    actualizar,
+    eliminar,
+    eliminarSerieDesde,
+    marcarPorteria,
+    buscarConflictos,
+    recargar,
+    sinSenal,
+    enCola,
+    error: errorEventos,
+    limpiarError: limpiarErrorEventos,
+  } = useEventos(obraActivaId, rango);
+  const { logout } = sesion;
+  const cerrarPorInactividad = useCallback(
+    () => logout(`Tu sesión se cerró tras ${LIMITE_INACTIVIDAD_MIN / 60} horas sin uso. Volvé a ingresar.`),
+    [logout],
+  );
+  useInactividad(cerrarPorInactividad);
   const autenticado = sesion.puedeEditar;
   const error = errorEventos || errorObras;
   const [tab, setTab] = useState(sesion.rol === 'porteria' ? 'porteria' : 'calendario');
@@ -174,6 +194,14 @@ function Principal({ sesion }) {
       </header>
 
       <main className={`mx-auto max-w-7xl px-4 ${enPorteria ? 'py-0' : 'py-5'}`}>
+        {(sinSenal || enCola > 0) && (
+          <div className={`mt-4 flex items-center gap-2 border px-3 py-2 text-sm no-print ${enPorteria ? 'border-[#FF9A3D] bg-[#2B1A08] text-[#FFD2A8]' : 'mb-4 border-[#B07A1E] bg-[#F6EBD4] text-[#5C3D06]'}`}>
+            <b>{sinSenal ? 'Sin señal.' : 'Enviando…'}</b>
+            {enCola > 0
+              ? `${enCola} marca(s) de portería guardadas en este equipo; se envían solas cuando vuelva la conexión.`
+              : 'Estás viendo lo último que se cargó. Los cambios se mostrarán al volver la conexión.'}
+          </div>
+        )}
         {error && (
           <div className="mb-4 mt-4 flex items-center justify-between gap-3 border border-[#D13038] bg-[#FBEBEC] px-3 py-2 text-sm text-[#A8232A] no-print">
             <span>No se pudo completar la operación: {error}</span>
@@ -247,8 +275,10 @@ function Principal({ sesion }) {
                 esAdmin={sesion.esAdmin}
                 onRango={cambiarRango}
                 agregar={agregar}
+                agregarSerie={agregarSerie}
                 actualizar={actualizar}
                 eliminar={eliminar}
+                eliminarSerieDesde={eliminarSerieDesde}
                 buscarConflictos={buscarConflictos}
               />
             )}
@@ -261,8 +291,10 @@ function Principal({ sesion }) {
                 esAdmin={sesion.esAdmin}
                 onRango={cambiarRango}
                 agregar={agregar}
+                agregarSerie={agregarSerie}
                 actualizar={actualizar}
                 eliminar={eliminar}
+                eliminarSerieDesde={eliminarSerieDesde}
                 buscarConflictos={buscarConflictos}
               />
             )}

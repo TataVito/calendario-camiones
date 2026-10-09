@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { correoDeUsuario, supabase } from './supabase.js';
+import { borrarTodoLocal, guardarLocal, leerLocal } from './local.js';
 
 // Sesión de Supabase Auth + perfil (rol) del usuario conectado.
 export function useSesion() {
@@ -32,9 +33,15 @@ export function useSesion() {
       .select('id, usuario, nombre, rol')
       .eq('id', userId)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!vigente) return;
-        setPerfil(data);
+        // Sin señal: se usa el último perfil conocido de este usuario (la base igual valida todo).
+        const perfilLocal = leerLocal('perfil');
+        if (error && perfilLocal?.id === userId) setPerfil(perfilLocal);
+        else {
+          setPerfil(data);
+          if (data) guardarLocal('perfil', data);
+        }
         setCargando(false);
       });
     return () => {
@@ -49,7 +56,18 @@ export function useSesion() {
     return 'Usuario o clave incorrectos.';
   }, []);
 
-  const logout = useCallback(() => supabase.auth.signOut(), []);
+  // Al salir se borran las copias locales de datos: no deben quedar en un equipo compartido.
+  const logout = useCallback(async (motivo) => {
+    borrarTodoLocal();
+    if (typeof motivo === 'string' && motivo) {
+      try {
+        sessionStorage.setItem('rvc_motivo_salida', motivo);
+      } catch {
+        // sin almacenamiento: solo no se muestra el motivo
+      }
+    }
+    await supabase.auth.signOut({ scope: 'local' });
+  }, []);
 
   const rol = perfil?.rol || '';
   return {

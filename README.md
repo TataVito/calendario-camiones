@@ -14,6 +14,9 @@ Coordinación de recepciones y despachos de camiones por obra. React + Vite, dat
 - Claves cifradas por Supabase Auth, mínimo 8 caracteres, límite de intentos de login, sesiones con expiración.
 - Los usuarios entran con "usuario + clave"; internamente cada uno es `<usuario>@calendario-rvc.invalid` (dominio reservado que nadie puede registrar, así nadie puede recibir correos de recuperación).
 - Auditoría: cada camión guarda quién lo creó y quién lo modificó por última vez.
+- **Choques de horario** revisados por la base (con bloqueo por obra y día, así dos personas que agendan a la vez no quedan ambas): solo se agenda encima marcando "Agendar igual", que queda registrado.
+- **Página publicada con CSP**: solo ejecuta código propio y solo se conecta con Supabase. Tailwind y las tipografías van dentro de la app (sin CDN).
+- **Cierre de sesión por inactividad** (2 horas, también si se cierra y reabre el navegador); al salir se borran las copias locales de datos.
 
 ## Puesta en marcha (una sola vez)
 
@@ -37,9 +40,14 @@ Coordinación de recepciones y despachos de camiones por obra. React + Vite, dat
   - `SUPABASE_DB_URL`: Supabase → Connect → **Session pooler** (URI con la clave de la base).
   - `RESPALDO_CLAVE`: una frase larga que solo conozca el admin. **Sin ella el respaldo no se puede abrir.**
   - Restaurar: `gpg -d respaldo-AAAA-MM-DD.sql.gpg > respaldo.sql` y luego `psql "<url>" -f respaldo.sql`.
-  - Las fotos de guías no van en este respaldo (quedan en Storage).
+  - `SUPABASE_SECRET_KEY` (opcional): llave secreta de Supabase; con ella el respaldo incluye también las **fotos de guías** (`fotos-AAAA-MM-DD.tar.gz.gpg`).
 - **Respaldo manual**: Administración → Respaldo descarga un Excel con todas las tablas.
 - GitHub desactiva las tareas programadas de un repositorio público tras 60 días sin commits; si llega el aviso por correo, reactivarlas en la pestaña Actions.
+
+## Celular y sin señal
+
+- Se puede **instalar** (Chrome: menú ⋮ → Instalar app / Agregar a pantalla principal).
+- Sin señal abre la última versión y los últimos datos cargados. Las marcas de portería se guardan en el equipo con la **hora en que se pulsó** y se envían solas al volver la conexión (la base acepta hasta 12 horas atrás). Las fotos necesitan conexión.
 
 ## Desarrollo
 

@@ -3,56 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/rvc.jpg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icono-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#D13038" />
     <!-- La app define sus propios colores (incluida Portería oscura): que el navegador no la invierta. -->
     <meta name="color-scheme" content="only light" />
     <meta name="darkreader-lock" />
     <title>Calendario de Camiones - RVC</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=DM+Mono:wght@400;500&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      // Estilo "Plano técnico" con la marca RVC: rojo corporativo (#D13038, el del logo), blanco,
-      // papel cálido y tinta carbón. La escala "gray" se redefine para que toda la app la tome.
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['"DM Sans"', '"Segoe UI"', 'system-ui', 'sans-serif'],
-              mono: ['"DM Mono"', 'ui-monospace', 'monospace'],
-              faena: ['Barlow', '"Segoe UI"', 'system-ui', 'sans-serif'],
-              faenacond: ['"Barlow Condensed"', '"Arial Narrow"', 'sans-serif'],
-            },
-            colors: {
-              white: '#FFFFFF',
-              papel: '#F5F3EE',
-              tinta: '#26262B',
-              rvc: '#D13038',
-              rvcosc: '#A8232A',
-              gray: {
-                50: '#F8F7F4',
-                100: '#F0EEE9',
-                200: '#E4E1DA',
-                300: '#CBC7BE',
-                400: '#8F8B82',
-                500: '#5F5D58',
-                600: '#4A4844',
-                700: '#38373A',
-                800: '#2E2D31',
-                900: '#26262B',
-              },
-            },
-            borderRadius: { sm: '1px', DEFAULT: '2px', md: '2px', lg: '2px', xl: '3px', '2xl': '4px' },
-            boxShadow: { sm: 'none', DEFAULT: 'none', md: '0 0 0 1px #26262B', lg: 'none', xl: '0 8px 24px rgba(38,38,43,0.18)' },
-          },
-        },
-      };
-    </script>
   </head>
   <body>
     <div id="root"></div>

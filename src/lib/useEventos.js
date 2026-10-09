@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase.js';
+import { esErrorDeRed, guardarLocal, leerLocal } from './local.js';
+import { encolar, enviarCola, pendientes } from './colaPorteria.js';
 
 // Columnas de la tabla public.eventos <-> campos que usa la UI.
 const CAMPOS = {
@@ -14,6 +16,8 @@ const CAMPOS = {
   formaDescarga: 'forma_descarga',
   estado: 'estado',
   observaciones: 'observaciones',
+  choqueAceptado: 'choque_aceptado',
+  serieId: 'serie_id',
 };
 
 export function aEvento(fila) {
@@ -125,15 +129,56 @@ export function useEventos(obraId, rango) {
     [obraId, desde, hasta],
   );
 
+  const claveLocal = `eventos_${obraId}`;
+  const [sinSenal, setSinSenal] = useState(false);
+  const [enCola, setEnCola] = useState(() => pendientes().length);
+
   const recargar = useCallback(async () => {
     if (!obraId) return setEventos([]);
     let q = supabase.from('eventos').select('*').eq('obra_id', obraId);
     if (desde) q = q.gte('fecha', desde);
     if (hasta) q = q.lte('fecha', hasta);
     const { data, error } = await q.order('fecha').order('hora_inicio').limit(5000);
-    if (error) setError(error.message);
-    else setEventos(data.map(aEvento));
-  }, [obraId, desde, hasta]);
+    if (error) {
+      if (!esErrorDeRed(error)) return setError(error.message);
+      // Sin señal: lo último que se cargó de esta obra.
+      setSinSenal(true);
+      const local = leerLocal(claveLocal);
+      if (local) setEventos(local);
+      return;
+    }
+    setSinSenal(false);
+    const lista = data.map(aEvento);
+    setEventos(lista);
+    guardarLocal(claveLocal, lista);
+  }, [obraId, desde, hasta, claveLocal]);
+
+  // Envía las marcas de portería hechas sin señal apenas vuelve la conexión.
+  const enviarPendientes = useCallback(async () => {
+    const antes = pendientes().length;
+    if (!antes) return;
+    const { quedan, rechazadas } = await enviarCola();
+    setEnCola(quedan);
+    if (rechazadas.length) setError(`No se pudieron registrar ${rechazadas.length} marca(s) hechas sin señal: ${rechazadas[0].motivo}`);
+    if (quedan < antes) await recargar();
+  }, [recargar]);
+
+  useEffect(() => {
+    enviarPendientes();
+    const alVolver = () => {
+      setSinSenal(false);
+      enviarPendientes().then(recargar);
+    };
+    const alPerder = () => setSinSenal(true);
+    window.addEventListener('online', alVolver);
+    window.addEventListener('offline', alPerder);
+    const t = setInterval(enviarPendientes, 60000);
+    return () => {
+      window.removeEventListener('online', alVolver);
+      window.removeEventListener('offline', alPerder);
+      clearInterval(t);
+    };
+  }, [enviarPendientes, recargar]);
 
   useEffect(() => {
     setEventos([]);
@@ -168,7 +213,47 @@ export function useEventos(obraId, rango) {
 
   const agregar = useCallback(
     async (datos) => {
-      const { error } = await supabase.from('eventos').insert({ estado: 'programado', ...aFila(datos) });
+      const { error } = await supabase.from('eventos').insert({ estado: 'programado', choque_aceptado: false, ...aFila(datos) });
+      if (error) setError(error.message);
+      await recargar();
+      return !error;
+    },
+    [recargar],
+  );
+
+  // Camiones recurrentes: uno por fecha, agrupados con serie_id. Se crean de a uno para que
+  // un choque o una regla rechace solo esa fecha y no toda la serie.
+  const agregarSerie = useCallback(
+    async (datos, fechas) => {
+      const serieId = crypto.randomUUID();
+      const fallidas = [];
+      for (const fecha of fechas) {
+        const { error } = await supabase
+          .from('eventos')
+          .insert({ estado: 'programado', choque_aceptado: false, ...aFila({ ...datos, fecha }), serie_id: serieId });
+        if (error) fallidas.push({ fecha, motivo: error.message });
+      }
+      await recargar();
+      if (fallidas.length) {
+        setError(
+          `Se agendaron ${fechas.length - fallidas.length} de ${fechas.length}. No se pudo: ` +
+            fallidas.map((f) => `${f.fecha} (${f.motivo.split('.')[0]})`).join('; '),
+        );
+      }
+      return fallidas;
+    },
+    [recargar],
+  );
+
+  // Elimina este camión y los siguientes de su serie (los completados quedan: la base los protege).
+  const eliminarSerieDesde = useCallback(
+    async (evento) => {
+      const { error } = await supabase
+        .from('eventos')
+        .delete()
+        .eq('serie_id', evento.serieId)
+        .gte('fecha', evento.fecha)
+        .neq('estado', 'completado');
       if (error) setError(error.message);
       await recargar();
     },
@@ -177,9 +262,10 @@ export function useEventos(obraId, rango) {
 
   const actualizar = useCallback(
     async (id, datos) => {
-      const { error } = await supabase.from('eventos').update(aFila(datos)).eq('id', id);
+      const { error } = await supabase.from('eventos').update({ choque_aceptado: false, ...aFila(datos) }).eq('id', id);
       if (error) setError(error.message);
       await recargar();
+      return !error;
     },
     [recargar],
   );
@@ -193,14 +279,38 @@ export function useEventos(obraId, rango) {
     [recargar],
   );
 
+  // Sin señal la marca queda en cola con su hora real y se muestra al instante en pantalla.
   const marcarPorteria = useCallback(
     async (id, paso) => {
+      const marcarLocal = () => {
+        const ahora = new Date().toISOString();
+        const cambio = {
+          llego: { estado: 'en_porteria', llegadaReal: ahora },
+          inicio: { estado: 'en_proceso', inicioProcesoReal: ahora },
+          termino: { estado: 'completado', salidaReal: ahora },
+        }[paso];
+        setEventos((prev) => {
+          const nuevos = prev.map((ev) => (ev.id === id ? { ...ev, ...cambio } : ev));
+          guardarLocal(claveLocal, nuevos);
+          return nuevos;
+        });
+        setEnCola(encolar(id, paso));
+        setSinSenal(true);
+      };
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        marcarLocal();
+        return true;
+      }
       const { error } = await supabase.rpc('marcar_porteria', { p_evento: id, p_paso: paso });
+      if (error && esErrorDeRed(error)) {
+        marcarLocal();
+        return true;
+      }
       if (error) setError(error.message);
       await recargar();
       return !error;
     },
-    [recargar],
+    [recargar, claveLocal],
   );
 
   // Choques: se consultan en la base para esa fecha (no dependen de lo que haya cargado).
@@ -218,5 +328,19 @@ export function useEventos(obraId, rango) {
       .filter((ev) => ev.id !== excluirId && seSolapan(candidato.horaInicio, finCandidato, ev.horaInicio, horaFin(ev)));
   }, []);
 
-  return { eventos, agregar, actualizar, eliminar, marcarPorteria, buscarConflictos, recargar, error, limpiarError: () => setError('') };
+  return {
+    eventos,
+    agregar,
+    agregarSerie,
+    actualizar,
+    eliminar,
+    eliminarSerieDesde,
+    marcarPorteria,
+    buscarConflictos,
+    recargar,
+    sinSenal,
+    enCola,
+    error,
+    limpiarError: () => setError(''),
+  };
 }

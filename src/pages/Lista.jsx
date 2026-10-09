@@ -6,7 +6,7 @@ import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from
 import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 import { exportarExcel } from '../lib/exportarExcel.js';
 
-export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, onRango, agregar, actualizar, eliminar, buscarConflictos }) {
+export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, onRango, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [tipo, setTipo] = useState('');
@@ -45,9 +45,15 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
     return !autenticado || (evento.estado === 'completado' && !esAdmin);
   }
 
-  function guardar(datos) {
+  function guardar(datos, fechas) {
     if (modal?.evento) actualizar(modal.evento.id, datos);
+    else if (fechas?.length > 1) agregarSerie(datos, fechas);
     else agregar(datos);
+    setModal(null);
+  }
+
+  function borrarSerie(evento) {
+    eliminarSerieDesde(evento);
     setModal(null);
   }
 
@@ -199,6 +205,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
               onGuardar={guardar}
               onCancelar={() => setModal(null)}
               onEliminar={borrar}
+              onEliminarSerie={borrarSerie}
               buscarConflictos={buscarConflictos}
             />
           ))}
