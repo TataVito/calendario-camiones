@@ -1,7 +1,7 @@
 name: Mantener Supabase activo
 
 # El plan gratis de Supabase pausa el proyecto tras 7 días sin uso (vacaciones, feriados).
-# Esta tarea hace una consulta mínima (función ping, no lee datos) lunes y jueves.
+# Esta tarea llama a la función ping (lee las tablas principales y solo devuelve "ok") lunes y jueves.
 on:
   schedule:
     - cron: '17 12 * * 1,4'
