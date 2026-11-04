@@ -3,6 +3,7 @@ import { Button, Card, Modal } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
 import { estadoInfo, formaDescargaInfo, horaFin, toMinutos, tipoInfo } from '../lib/useEventos.js';
+import { estiloMaterial } from '../lib/materiales.js';
 import {
   cuadriculaMes,
   diasDeSemana,
@@ -40,7 +41,14 @@ const ESTILOS_TIPO = {
 function estiloEvento(ev) {
   if (ev.estado === 'completado') return 'bg-transparent border-dashed border-gray-400 text-gray-500';
   if (ev.estado === 'en_proceso' || ev.estado === 'en_porteria') return 'bg-tinta border-tinta text-papel';
+  if (ev.material) return '';
   return ESTILOS_TIPO[ev.tipo] || ESTILOS_TIPO.recepcion;
+}
+
+// Programados y confirmados llevan el color de su material, para reconocerlos de un vistazo.
+function colorEvento(ev) {
+  if (['completado', 'en_proceso', 'en_porteria'].includes(ev.estado)) return undefined;
+  return estiloMaterial(ev.material);
 }
 
 const MARCA_ESTADO = { completado: '✓', en_proceso: '●', en_porteria: '●', confirmado: '◆', cancelado: '✕', programado: '' };
@@ -348,7 +356,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       abrirSiNoSeArrastro(ev);
                     }}
                     className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
-                    style={posicionEvento(ev, PX_POR_MIN_DIA)}
+                    style={{ ...posicionEvento(ev, PX_POR_MIN_DIA), ...colorEvento(ev) }}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold">
@@ -358,19 +366,12 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                         {MARCA_ESTADO[ev.estado]} {estado.label}
                       </span>
                     </div>
-                    {ev.proveedorCliente && (
-                      <div className="truncate">
-                        {esProveedor ? 'Proveedor' : 'Cliente'}: {ev.proveedorCliente}
-                      </div>
-                    )}
-                    {(ev.material || ev.formaDescarga) && (
-                      <div className="truncate opacity-80">
-                        {ev.material}
-                        {ev.material && ev.formaDescarga && ' · '}
-                        {ev.formaDescarga && formaDescargaInfo(ev.formaDescarga).label}
-                      </div>
-                    )}
-                    {ev.guiaOC && <div className="truncate opacity-80">Guía/OC: {ev.guiaOC}</div>}
+                    {ev.material && <div className="truncate text-sm font-bold">{ev.material}</div>}
+                    <div className="truncate opacity-80">
+                      {[ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente && `${esProveedor ? 'Proveedor' : 'Cliente'}: ${ev.proveedorCliente}`, ev.formaDescarga && formaDescargaInfo(ev.formaDescarga).label]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
                   </button>
                 );
               })}
@@ -437,7 +438,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                         abrirSiNoSeArrastro(ev);
                       }}
                       className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
-                      style={posicionEvento(ev)}
+                      style={{ ...posicionEvento(ev), ...colorEvento(ev) }}
                     >
                       <div className="font-mono text-[10px]">
                         {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[ev.estado]}
@@ -503,10 +504,12 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                           className={`flex w-full items-center gap-1 truncate border ${sePuedeMover(ev) ? 'cursor-grab select-none' : ''} px-1 py-0.5 text-left text-[10px] leading-tight hover:opacity-80 ${
                             ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''
                           } ${estiloEvento(ev)}`}
+                          style={colorEvento(ev)}
+                          title={[ev.material, ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente].filter(Boolean).join(' · ')}
                         >
                           <span className={`h-1.5 w-1.5 shrink-0 ${PUNTO_TIPO[ev.tipo] || PUNTO_TIPO.recepcion}`} />
                           <span className="shrink-0 font-mono">{ev.horaInicio}</span>
-                          <span className="truncate">{ev.proveedorCliente || tipoInfo(ev.tipo).label}</span>
+                          <span className="truncate font-semibold">{ev.material || ev.proveedorCliente || tipoInfo(ev.tipo).label}</span>
                         </button>
                       ))}
                       {restantes > 0 && (
@@ -541,12 +544,18 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
       <Modal
         open={!!modal}
         onClose={cerrar}
-        title={modal?.evento ? (soloLectura(modal.evento) ? 'Detalle del camión' : 'Editar camión agendado') : 'Agendar nuevo camión'}
+        title={modal?.evento ? (modal.editando ? 'Editar camión agendado' : 'Detalle del camión') : 'Agendar nuevo camión'}
         wide
       >
         {modal &&
-          (modal.evento && soloLectura(modal.evento) ? (
-            <EventoDetalle evento={modal.evento} onCerrar={cerrar} completado={autenticado} puedeSubirFotos={autenticado} />
+          (modal.evento && !modal.editando ? (
+            <EventoDetalle
+              evento={modal.evento}
+              onCerrar={cerrar}
+              onEditar={soloLectura(modal.evento) ? undefined : () => setModal({ evento: modal.evento, editando: true })}
+              completado={autenticado}
+              puedeSubirFotos={autenticado}
+            />
           ) : (
             <EventoForm
               evento={modal.evento}

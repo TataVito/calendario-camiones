@@ -5,8 +5,9 @@ import EventoDetalle from '../components/EventoDetalle.jsx';
 import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
 import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 import { exportarExcel } from '../lib/exportarExcel.js';
+import ImportarCalendario from '../components/ImportarCalendario.jsx';
 
-export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, onRango, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
+export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, onRango, recargar, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [tipo, setTipo] = useState('');
@@ -126,7 +127,8 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
             {esRangoUnDia ? `Lista de camiones — ${etiquetaFechaLarga(desde)}` : `Lista de camiones (${desde} a ${hasta})`}
           </h2>
         </div>
-        <div className="flex gap-2 no-print">
+        <div className="flex flex-wrap justify-end gap-2 no-print">
+          {autenticado && <ImportarCalendario obraId={obraActivaId} obraNombre={obraNombre} onListo={recargar} />}
           <Button variant="secondary" onClick={exportar} disabled={exportando || filtrados.length === 0}>
             {exportando ? 'Generando…' : `📊 Exportar a Excel (${filtrados.length})`}
           </Button>

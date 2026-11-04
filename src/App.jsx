@@ -290,6 +290,7 @@ function Principal({ sesion }) {
                 autenticado={autenticado}
                 esAdmin={sesion.esAdmin}
                 onRango={cambiarRango}
+                recargar={recargar}
                 agregar={agregar}
                 agregarSerie={agregarSerie}
                 actualizar={actualizar}
