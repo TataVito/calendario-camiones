@@ -6,7 +6,7 @@ import Porteria from './pages/Porteria.jsx';
 import Reportes from './pages/Reportes.jsx';
 import ObrasModal from './components/ObrasModal.jsx';
 import { Button, Card } from './components/ui.jsx';
-import { useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
+import { ESTADOS_CERRADOS, useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
 import { useObras } from './lib/useObras.js';
 import { useSesion } from './lib/useSesion.js';
 import { LIMITE_INACTIVIDAD_MIN, useInactividad } from './lib/useInactividad.js';
@@ -98,7 +98,7 @@ function Principal({ sesion }) {
     const enProceso = deHoy.filter((ev) => ev.estado === 'en_proceso' || ev.estado === 'en_porteria').length;
     const ahora = minutosAhora();
     const proximo = deHoy
-      .filter((ev) => ev.estado !== 'completado' && toMinutos(ev.horaInicio) >= ahora)
+      .filter((ev) => !ESTADOS_CERRADOS.includes(ev.estado) && toMinutos(ev.horaInicio) >= ahora)
       .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio))[0];
     return { recepciones, despachos, enProceso, proximo };
   }, [eventosDeObra]);
@@ -273,6 +273,7 @@ function Principal({ sesion }) {
                 obraActivaId={obraActivaId}
                 autenticado={autenticado}
                 esAdmin={sesion.esAdmin}
+                usuario={sesion.perfil?.usuario}
                 onRango={cambiarRango}
                 agregar={agregar}
                 agregarSerie={agregarSerie}
@@ -289,6 +290,7 @@ function Principal({ sesion }) {
                 obraNombre={obraActiva?.nombre}
                 autenticado={autenticado}
                 esAdmin={sesion.esAdmin}
+                usuario={sesion.perfil?.usuario}
                 onRango={cambiarRango}
                 recargar={recargar}
                 agregar={agregar}

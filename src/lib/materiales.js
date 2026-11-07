@@ -1,7 +1,7 @@
 // Color propio por material (los mismos del calendario de despachos de la obra) y lectura de
 // la lista de materiales que el importador deja en observaciones.
 
-import { MARCA_REF, normalizar } from './importarCalendario.js';
+import { MARCA_COMENTARIO, MARCA_REF, normalizar } from './importarCalendario.js';
 
 // Palabra clave (sin tildes, minúsculas) -> color base. El orden importa: lo más específico primero.
 const COLORES = [
@@ -76,18 +76,32 @@ export function estiloMaterial(material) {
   return { backgroundColor: mezclar(base, 0.86), borderColor: mezclar(base, 0.45), color: oscurecer(base, 0.72), borderLeft: `4px solid ${base}` };
 }
 
-// Separa las observaciones en: lista de materiales con cantidad, y notas libres.
-// Las líneas técnicas del importador (referencia, "Importado del...") no se muestran.
+// Separa las observaciones en: lista de materiales con cantidad, notas libres y comentarios
+// agregados desde la ficha. Las líneas técnicas del importador (referencia, "Importado del...") no se muestran.
 export function leerObservaciones(observaciones) {
   const items = [];
   const notas = [];
+  const comentarios = [];
   for (const linea of (observaciones || '').split('\n')) {
     const t = linea.trim();
     if (!t || t === 'Materiales:' || t.startsWith(MARCA_REF) || /^Importado de(l| la) /.test(t)) continue;
-    if (t.startsWith('• ')) {
+    if (t.startsWith(MARCA_COMENTARIO.trim())) {
+      const m = t.slice(MARCA_COMENTARIO.trim().length).trim().match(/^(.*?) · (\d\d-\d\d \d\d:\d\d) — ([\s\S]*)$/);
+      comentarios.push(m ? { autor: m[1], cuando: m[2], texto: m[3] } : { autor: '', cuando: '', texto: t.slice(MARCA_COMENTARIO.trim().length).trim() });
+    } else if (t.startsWith('• ')) {
       const [desc, cant] = t.slice(2).split(' — ');
       items.push({ descripcion: desc, cantidad: cant || '' });
     } else notas.push(t.replace(/^Nota del día: /, ''));
   }
-  return { items, notas };
+  return { items, notas, comentarios };
+}
+
+// Agrega un comentario (una línea) al final de las observaciones, con autor y hora de Chile.
+export function agregarComentario(observaciones, texto, autor) {
+  const cuando = new Date()
+    .toLocaleString('en-GB', { timeZone: 'America/Santiago', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+    .replace(/\//g, '-')
+    .replace(', ', ' ');
+  const limpio = texto.replace(/\s+/g, ' ').trim();
+  return [(observaciones || '').trimEnd(), `${MARCA_COMENTARIO}${autor || 'usuario'} · ${cuando} — ${limpio}`].filter(Boolean).join('\n');
 }

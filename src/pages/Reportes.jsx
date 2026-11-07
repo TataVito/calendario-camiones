@@ -33,6 +33,8 @@ function indicadores(lista) {
     recepciones: activos.filter((ev) => ev.tipo === 'recepcion').length,
     despachos: activos.filter((ev) => ev.tipo === 'despacho').length,
     completados: activos.filter((ev) => ev.estado === 'completado').length,
+    incompletos: activos.filter((ev) => ev.estado === 'incompleto').length,
+    noRecibidos: activos.filter((ev) => ev.estado === 'no_recibido').length,
     cancelados: lista.length - activos.length,
     conRegistro: llegados.length,
     puntualidad: pct(puntuales.length, llegados.length),
@@ -155,6 +157,8 @@ async function exportar(datos, nombre) {
     Recepciones: f.recepciones,
     Despachos: f.despachos,
     Completados: f.completados,
+    Incompletos: f.incompletos,
+    'No recibidos': f.noRecibidos,
     Cancelados: f.cancelados,
     'Con registro portería': f.conRegistro,
     Puntualidad: f.puntualidad,
@@ -259,7 +263,7 @@ export default function Reportes({ obras, obraActivaId }) {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Tile titulo="Camiones" valor={t.camiones} detalle={`${t.recepciones} recepciones · ${t.despachos} despachos`} />
-        <Tile titulo="Completados" valor={t.completados} detalle={`${t.cancelados} cancelados`} />
+        <Tile titulo="Completados" valor={t.completados} detalle={`${t.incompletos} incompletos · ${t.noRecibidos} no recibidos · ${t.cancelados} cancelados`} />
         <Tile
           titulo={`Puntualidad (±${TOLERANCIA_MIN} min)`}
           valor={t.puntualidad}

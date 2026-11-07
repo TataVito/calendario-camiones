@@ -91,7 +91,7 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
           hora_inicio: item.horaInicio,
           guia_oc: d.oc || item.evento.guiaOC,
           proveedor_cliente: d.proveedor || item.evento.proveedorCliente,
-          observaciones: observacionesDe(d, hoy),
+          observaciones: observacionesDe(d, hoy, item.evento.observaciones),
           choque_aceptado: item.choque,
         })
         .eq('id', item.evento.id);
@@ -106,7 +106,7 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
           material: d.material,
           guia_oc: d.oc,
           proveedor_cliente: d.proveedor || evento.proveedorCliente,
-          observaciones: observacionesDe(d, hoy),
+          observaciones: observacionesDe(d, hoy, evento.observaciones),
         })
         .eq('id', evento.id);
       if (err) r.fallas.push(`${d.fecha} ${d.material}: ${err.message}`);

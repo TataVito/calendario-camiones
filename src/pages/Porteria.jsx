@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import FotosGuia from '../components/FotosGuia.jsx';
-import { estadoInfo, formaDescargaInfo, hoyChile, horaFin, tipoInfo, toMinutos } from '../lib/useEventos.js';
+import { ESTADOS_CERRADOS, estadoInfo, formaDescargaInfo, hoyChile, horaFin, tipoInfo, toMinutos } from '../lib/useEventos.js';
 import { TOLERANCIA_MIN, atrasoMin, atrasoTexto, duracionTexto, horaChile, tiempoEnObraMin } from '../lib/tiempos.js';
 
 // Estilo "Faena" con la marca RVC: oscuro, alto contraste, rojo corporativo y botones grandes,
@@ -20,6 +20,8 @@ const ETIQUETA_ESTADO = {
   en_porteria: 'bg-[#6CB4FF] text-[#0B1A2B]',
   en_proceso: 'bg-[#E5484F] text-white',
   completado: 'bg-[#2E3238] text-[#7CD992]',
+  incompleto: 'bg-[#2E3238] text-[#FFB547]',
+  no_recibido: 'bg-[#2E3238] text-[#FF7A70]',
   cancelado: 'bg-[#2E3238] text-[#A3A7AD]',
 };
 
@@ -38,7 +40,7 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
   const esperando = !ev.llegadaReal && (ev.estado === 'programado' || ev.estado === 'confirmado');
   const atrasadoAhora = esperando && ahora > toMinutos(ev.horaInicio) + TOLERANCIA_MIN;
   const enObra = ev.estado === 'en_porteria' || ev.estado === 'en_proceso';
-  const terminado = ev.estado === 'completado' || ev.estado === 'cancelado';
+  const terminado = ESTADOS_CERRADOS.includes(ev.estado);
 
   async function pulsar() {
     // "Terminó" deja el camión completado y bloqueado: se pide una segunda confirmación.
@@ -141,9 +143,9 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
     () => eventos.filter((ev) => ev.fecha === hoy).sort((a, b) => a.horaInicio.localeCompare(b.horaInicio)),
     [eventos, hoy],
   );
-  const pendientes = deHoy.filter((ev) => ev.estado !== 'completado' && ev.estado !== 'cancelado');
+  const pendientes = deHoy.filter((ev) => !ESTADOS_CERRADOS.includes(ev.estado));
   const enObra = deHoy.filter((ev) => ev.estado === 'en_porteria' || ev.estado === 'en_proceso');
-  const terminados = deHoy.filter((ev) => ev.estado === 'completado' || ev.estado === 'cancelado');
+  const terminados = deHoy.filter((ev) => ESTADOS_CERRADOS.includes(ev.estado));
   const fecha = new Date(`${hoy}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (

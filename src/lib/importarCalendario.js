@@ -14,6 +14,8 @@
 import { sumarMinutos, toMinutos } from './useEventos.js';
 
 export const MARCA_REF = 'Ref. calendario: ';
+// Comentarios que la obra agrega desde la ficha: se conservan al volver a importar.
+export const MARCA_COMENTARIO = '💬 ';
 const MARCA_PLANILLA = 'Importado de la planilla Control Despachos';
 const MARCA_CALENDARIO = 'Importado del calendario de despachos';
 
@@ -84,7 +86,7 @@ export function leerCalendarioHTML(html) {
   return despachos.sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
-export function observacionesDe(d, fechaImportacion) {
+export function observacionesDe(d, fechaImportacion, previas = '') {
   const lineas = [];
   if (d.materiales.length) {
     lineas.push('Materiales:');
@@ -94,6 +96,7 @@ export function observacionesDe(d, fechaImportacion) {
   const [a, m, dd] = fechaImportacion.split('-');
   lineas.push(`${MARCA_CALENDARIO} (${dd}-${m}-${a}).`);
   lineas.push(`${MARCA_REF}${d.ref}`);
+  for (const l of (previas || '').split('\n')) if (l.startsWith(MARCA_COMENTARIO)) lineas.push(l);
   return lineas.join('\n');
 }
 
@@ -130,7 +133,7 @@ function buscarHora(ocupados, duracion) {
   return { horaInicio: '09:00', choque: true };
 }
 
-const NO_TOCAR = new Set(['en_porteria', 'en_proceso', 'completado', 'cancelado']);
+const NO_TOCAR = new Set(['en_porteria', 'en_proceso', 'completado', 'incompleto', 'no_recibido', 'cancelado']);
 
 // Compara el archivo con los camiones de la obra (de hoy en adelante) y arma el plan:
 //   nuevos:   despachos que no están -> se agendan
@@ -169,7 +172,7 @@ export function compararConAgendados(despachos, eventos, hoy) {
     if (previo) {
       usados.add(previo.id);
       if (previo.fecha === d.fecha) plan.iguales.push({ despacho: d, evento: previo });
-      else if (d.fecha < hoy || NO_TOCAR.has(previo.estado)) plan.iguales.push({ despacho: d, evento: previo, aviso: d.fecha < hoy ? 'nueva fecha ya pasó' : 'ya está en curso o completado' });
+      else if (d.fecha < hoy || NO_TOCAR.has(previo.estado)) plan.iguales.push({ despacho: d, evento: previo, aviso: d.fecha < hoy ? 'nueva fecha ya pasó' : 'ya está en curso o cerrado' });
       else plan.movidos.push({ despacho: d, evento: previo });
       continue;
     }
@@ -184,7 +187,7 @@ export function compararConAgendados(despachos, eventos, hoy) {
     const mismo = activos.find((ev) => !refDe(ev) && pareceElMismo(d, ev));
     if (mismo) {
       usados.add(mismo.id);
-      if (NO_TOCAR.has(mismo.estado)) plan.iguales.push({ despacho: d, evento: mismo, aviso: 'ya está en curso o completado' });
+      if (NO_TOCAR.has(mismo.estado)) plan.iguales.push({ despacho: d, evento: mismo, aviso: 'ya está en curso o cerrado' });
       else if (!reescritos.has(mismo.id)) {
         reescritos.add(mismo.id);
         plan.actualizar.push({ despacho: d, evento: mismo });

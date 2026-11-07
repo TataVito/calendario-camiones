@@ -1,8 +1,9 @@
-import { Button } from './ui.jsx';
+import { useState } from 'react';
+import { Button, Textarea } from './ui.jsx';
 import Autoria from './Autoria.jsx';
 import FotosGuia from './FotosGuia.jsx';
 import { estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
-import { colorBase, leerObservaciones } from '../lib/materiales.js';
+import { agregarComentario, colorBase, leerObservaciones } from '../lib/materiales.js';
 import { etiquetaFechaLarga } from '../lib/fechas.js';
 
 function Dato({ label, valor }) {
@@ -14,13 +15,53 @@ function Dato({ label, valor }) {
   );
 }
 
+// Cómo quedó la recepción: botones rápidos en la ficha.
+const CIERRES = [
+  { value: 'completado', label: '✓ Completo', estilo: 'border-[#2E6B4F] text-[#2E6B4F] hover:bg-[#2E6B4F]/5', activo: 'bg-[#2E6B4F] border-[#2E6B4F] text-white' },
+  { value: 'incompleto', label: '◐ Incompleto', estilo: 'border-[#B07A1E] text-[#8A5A0B] hover:bg-[#B07A1E]/5', activo: 'bg-[#B07A1E] border-[#B07A1E] text-white' },
+  { value: 'no_recibido', label: '✕ No recibido', estilo: 'border-[#A8232A] text-[#A8232A] hover:bg-[#A8232A]/5', activo: 'bg-[#A8232A] border-[#A8232A] text-white' },
+];
+
 // Ficha del camión: lo esencial para la obra (material, OC, proveedor y cantidades).
 // Lo demás (forma de descarga, autoría) queda plegado en "Más información".
-export default function EventoDetalle({ evento, onCerrar, onEditar, completado, puedeSubirFotos }) {
+// Con onActualizar (quien puede editar) se marca cómo quedó y se agregan comentarios sin abrir el formulario.
+export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar, usuario, esAdmin, completado, puedeSubirFotos }) {
   const estado = estadoInfo(evento.estado);
   const esRecepcion = evento.tipo === 'recepcion';
-  const { items, notas } = leerObservaciones(evento.observaciones);
+  const { items, notas, comentarios } = leerObservaciones(evento.observaciones);
   const color = colorBase(evento.material) || '#26262B';
+
+  // Estado elegido que espera confirmación (con comentario opcional) y comentario suelto.
+  const [eligiendo, setEligiendo] = useState(null);
+  const [comentando, setComentando] = useState(false);
+  const [texto, setTexto] = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  function abrir(cual) {
+    setEligiendo(cual);
+    setComentando(cual === null);
+    setTexto('');
+  }
+
+  function cancelar() {
+    setEligiendo(null);
+    setComentando(false);
+    setTexto('');
+  }
+
+  async function guardar() {
+    const datos = {};
+    if (eligiendo) datos.estado = eligiendo;
+    if (texto.trim()) datos.observaciones = agregarComentario(evento.observaciones, texto, usuario);
+    if (!Object.keys(datos).length) return cancelar();
+    setGuardando(true);
+    const ok = await onActualizar(datos);
+    setGuardando(false);
+    if (ok) cancelar();
+  }
+
+  const elegido = CIERRES.find((c) => c.value === eligiendo);
+  const bloquea = eligiendo === 'completado' && !esAdmin;
 
   return (
     <div className="space-y-4">
@@ -60,6 +101,83 @@ export default function EventoDetalle({ evento, onCerrar, onEditar, completado, 
 
       {notas.length > 0 && (
         <div className="whitespace-pre-line border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">{notas.join('\n')}</div>
+      )}
+
+      {comentarios.length > 0 && (
+        <div>
+          <div className="mb-1 font-mono text-[11px] uppercase tracking-wide text-gray-500">Comentarios</div>
+          <ul className="space-y-1.5">
+            {comentarios.map((c, i) => (
+              <li key={i} className="border-l-4 border-[#B07A1E] bg-[#FBF5E8] px-3 py-1.5 text-sm text-tinta">
+                {c.texto}
+                {(c.autor || c.cuando) && <div className="font-mono text-[11px] text-gray-500">{[c.autor, c.cuando].filter(Boolean).join(' · ')}</div>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {onActualizar && (
+        <div className="space-y-2 border border-gray-300 p-3">
+          <div className="font-mono text-[11px] uppercase tracking-wide text-gray-500">¿Cómo quedó {esRecepcion ? 'la recepción' : 'el despacho'}?</div>
+          <div className="flex flex-wrap gap-2">
+            {CIERRES.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                disabled={guardando}
+                aria-pressed={evento.estado === c.value}
+                onClick={() => abrir(c.value)}
+                className={`min-h-[40px] border px-3 text-sm font-medium ${evento.estado === c.value || eligiendo === c.value ? c.activo : c.estilo}`}
+              >
+                {c.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={guardando}
+              onClick={() => abrir(null)}
+              className="min-h-[40px] border border-tinta px-3 text-sm font-medium text-tinta hover:bg-tinta/5"
+            >
+              💬 Agregar comentario
+            </button>
+          </div>
+
+          {(eligiendo || comentando) && (
+            <div className="space-y-2 pt-1">
+              {elegido && (
+                <p className="text-sm text-gray-700">
+                  Se marcará como <b>{estadoInfo(eligiendo).label}</b>.
+                  {bloquea && ' Después ya no podrás modificarlo ni eliminarlo; solo un administrador.'}
+                </p>
+              )}
+              <Textarea
+                rows={2}
+                maxLength={300}
+                autoFocus
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                placeholder={
+                  eligiendo === 'incompleto'
+                    ? 'Comentario (opcional): qué faltó, cuándo llega el resto…'
+                    : eligiendo === 'no_recibido'
+                      ? 'Comentario (opcional): motivo, nueva fecha…'
+                      : eligiendo
+                        ? 'Comentario (opcional)'
+                        : 'Ej: los receptáculos llegarán aparte a mediodía'
+                }
+              />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={cancelar} disabled={guardando}>
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={guardar} disabled={guardando || (!eligiendo && !texto.trim())}>
+                  {guardando ? 'Guardando…' : elegido ? 'Confirmar' : 'Guardar comentario'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       <FotosGuia evento={evento} puedeSubir={puedeSubirFotos} puedeBorrar={false} />

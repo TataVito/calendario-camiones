@@ -7,7 +7,7 @@ import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 import { exportarExcel } from '../lib/exportarExcel.js';
 import ImportarCalendario from '../components/ImportarCalendario.jsx';
 
-export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, onRango, recargar, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
+export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, usuario, onRango, recargar, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [tipo, setTipo] = useState('');
@@ -45,6 +45,9 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
   function soloLectura(evento) {
     return !autenticado || (evento.estado === 'completado' && !esAdmin);
   }
+
+  // La ficha abierta se mantiene al día (al marcar estado o comentar desde ella).
+  const eventoVivo = modal?.evento ? eventos.find((e) => e.id === modal.evento.id) || modal.evento : null;
 
   function guardar(datos, fechas) {
     if (modal?.evento) actualizar(modal.evento.id, datos);
@@ -172,7 +175,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
                   </td>
                   <td className="px-3 py-2 no-print">
                     <button className="text-sm text-[#D13038] hover:underline" onClick={() => setModal({ evento: ev })}>
-                      {soloLectura(ev) ? 'Ver' : 'Editar'}
+                      Ver
                     </button>
                   </td>
                 </tr>
@@ -192,14 +195,24 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
       <Modal
         open={!!modal}
         onClose={() => setModal(null)}
-        title={modal?.evento ? (soloLectura(modal.evento) ? 'Detalle del camión' : 'Editar camión agendado') : 'Agendar nuevo camión'}
+        title={modal?.evento ? (modal.editando ? 'Editar camión agendado' : 'Detalle del camión') : 'Agendar nuevo camión'}
         wide
       >
         {modal &&
-          (modal.evento && soloLectura(modal.evento) ? (
-            <EventoDetalle evento={modal.evento} onCerrar={() => setModal(null)} completado={autenticado} puedeSubirFotos={autenticado} />
+          (modal.evento && !modal.editando ? (
+            <EventoDetalle
+              evento={eventoVivo}
+              onCerrar={() => setModal(null)}
+              onEditar={soloLectura(eventoVivo) ? undefined : () => setModal({ evento: eventoVivo, editando: true })}
+              onActualizar={soloLectura(eventoVivo) ? undefined : (datos) => actualizar(eventoVivo.id, datos)}
+              usuario={usuario}
+              esAdmin={esAdmin}
+              completado={autenticado}
+              puedeSubirFotos={autenticado}
+            />
           ) : (
             <EventoForm
+              eventos={eventos}
               evento={modal.evento}
               fechaSugerida={modal.fecha}
               obraActivaId={obraActivaId}

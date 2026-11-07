@@ -50,6 +50,8 @@ export const ESTADOS = [
   { value: 'en_porteria', label: 'En portería', color: 'bg-tinta/10 text-tinta border-tinta' },
   { value: 'en_proceso', label: 'En proceso (carga/descarga)', color: 'bg-tinta text-papel border-tinta' },
   { value: 'completado', label: 'Completado', color: 'bg-transparent text-[#2E6B4F] border-[#2E6B4F] border-dashed' },
+  { value: 'incompleto', label: 'Incompleto', color: 'bg-[#F6EBD4] text-[#8A5A0B] border-[#B07A1E]' },
+  { value: 'no_recibido', label: 'No recibido', color: 'bg-[#FBEBEC] text-[#A8232A] border-[#A8232A]' },
   { value: 'cancelado', label: 'Cancelado', color: 'bg-transparent text-[#D13038] border-[#D13038] line-through' },
 ];
 
@@ -82,6 +84,9 @@ export const RECURSOS_SUGERIDOS = [
   'Maquinaria / Equipos',
   'Residuos / Escombros',
 ];
+
+// Estados que cierran el camión (ya no se espera en portería).
+export const ESTADOS_CERRADOS = ['completado', 'incompleto', 'no_recibido', 'cancelado'];
 
 export function estadoInfo(value) {
   return ESTADOS.find((e) => e.value === value) || ESTADOS[0];

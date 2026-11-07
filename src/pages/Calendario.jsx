@@ -3,7 +3,7 @@ import { Button, Card, Modal } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
 import { estadoInfo, formaDescargaInfo, horaFin, toMinutos, tipoInfo } from '../lib/useEventos.js';
-import { estiloMaterial } from '../lib/materiales.js';
+import { estiloMaterial, leerObservaciones } from '../lib/materiales.js';
 import {
   cuadriculaMes,
   diasDeSemana,
@@ -41,24 +41,31 @@ const ESTILOS_TIPO = {
 function estiloEvento(ev) {
   if (ev.estado === 'completado') return 'bg-transparent border-dashed border-gray-400 text-gray-500';
   if (ev.estado === 'en_proceso' || ev.estado === 'en_porteria') return 'bg-tinta border-tinta text-papel';
+  if (ev.estado === 'incompleto') return 'bg-[#F6EBD4] border-dashed border-[#B07A1E] text-[#8A5A0B]';
+  if (ev.estado === 'no_recibido') return 'bg-[#FBEBEC] border-dashed border-[#A8232A] text-[#A8232A]';
   if (ev.material) return '';
   return ESTILOS_TIPO[ev.tipo] || ESTILOS_TIPO.recepcion;
 }
 
 // Programados y confirmados llevan el color de su material, para reconocerlos de un vistazo.
 function colorEvento(ev) {
-  if (['completado', 'en_proceso', 'en_porteria'].includes(ev.estado)) return undefined;
+  if (['completado', 'incompleto', 'no_recibido', 'en_proceso', 'en_porteria'].includes(ev.estado)) return undefined;
   return estiloMaterial(ev.material);
 }
 
-const MARCA_ESTADO = { completado: '✓', en_proceso: '●', en_porteria: '●', confirmado: '◆', cancelado: '✕', programado: '' };
+const MARCA_ESTADO = { completado: '✓', incompleto: '◐', no_recibido: '✕', en_proceso: '●', en_porteria: '●', confirmado: '◆', cancelado: '✕', programado: '' };
+
+// Último comentario agregado desde la ficha (para mostrarlo en el bloque del camión).
+function ultimoComentario(ev) {
+  return leerObservaciones(ev.observaciones).comentarios.at(-1)?.texto || '';
+}
 
 const PUNTO_TIPO = {
   recepcion: 'bg-tinta',
   despacho: 'bg-[#7A3E0C]',
 };
 
-export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, onRango, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
+export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, usuario, onRango, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
   // En el celular la semana de 7 columnas no cabe: se abre en vista Día.
   const [vista, setVista] = useState(() => (window.innerWidth < 640 ? 'dia' : 'semana')); // 'dia' | 'semana' | 'mes'
   const [diaReferencia, setDiaReferencia] = useState(hoyISO());
@@ -184,6 +191,9 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
   function cerrar() {
     setModal(null);
   }
+
+  // La ficha abierta se mantiene al día (al marcar estado o comentar desde ella).
+  const eventoVivo = modal?.evento ? eventos.find((e) => e.id === modal.evento.id) || modal.evento : null;
 
   function guardar(datos, fechas) {
     if (modal?.evento) actualizar(modal.evento.id, datos);
@@ -367,6 +377,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       </span>
                     </div>
                     {ev.material && <div className="truncate text-sm font-bold">{ev.material}</div>}
+                    {ultimoComentario(ev) && <div className="truncate italic">💬 {ultimoComentario(ev)}</div>}
                     <div className="truncate opacity-80">
                       {[ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente && `${esProveedor ? 'Proveedor' : 'Cliente'}: ${ev.proveedorCliente}`, ev.formaDescarga && formaDescargaInfo(ev.formaDescarga).label]
                         .filter(Boolean)
@@ -441,7 +452,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       style={{ ...posicionEvento(ev), ...colorEvento(ev) }}
                     >
                       <div className="font-mono text-[10px]">
-                        {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[ev.estado]}
+                        {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[ev.estado]} {ultimoComentario(ev) && '💬'}
                       </div>
                       <div className="truncate font-bold">{ev.material || tipoInfo(ev.tipo).label}</div>
                       {ev.proveedorCliente && <div className="truncate opacity-80">{ev.proveedorCliente}</div>}
@@ -505,7 +516,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                             ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''
                           } ${estiloEvento(ev)}`}
                           style={colorEvento(ev)}
-                          title={[ev.material, ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente].filter(Boolean).join(' · ')}
+                          title={[ev.material, ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente, estadoInfo(ev.estado).label, ultimoComentario(ev) && `💬 ${ultimoComentario(ev)}`].filter(Boolean).join(' · ')}
                         >
                           <span className={`h-1.5 w-1.5 shrink-0 ${PUNTO_TIPO[ev.tipo] || PUNTO_TIPO.recepcion}`} />
                           <span className="shrink-0 font-mono">{ev.horaInicio}</span>
@@ -550,14 +561,18 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
         {modal &&
           (modal.evento && !modal.editando ? (
             <EventoDetalle
-              evento={modal.evento}
+              evento={eventoVivo}
               onCerrar={cerrar}
-              onEditar={soloLectura(modal.evento) ? undefined : () => setModal({ evento: modal.evento, editando: true })}
+              onEditar={soloLectura(eventoVivo) ? undefined : () => setModal({ evento: eventoVivo, editando: true })}
+              onActualizar={soloLectura(eventoVivo) ? undefined : (datos) => actualizar(eventoVivo.id, datos)}
+              usuario={usuario}
+              esAdmin={esAdmin}
               completado={autenticado}
               puedeSubirFotos={autenticado}
             />
           ) : (
             <EventoForm
+              eventos={eventos}
               evento={modal.evento}
               fechaSugerida={modal.fecha}
               horaSugerida={modal.hora}

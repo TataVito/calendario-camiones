@@ -4,6 +4,7 @@ import Autoria from './Autoria.jsx';
 import FotosGuia from './FotosGuia.jsx';
 import { desdeISO, hoyISO, sumarDias } from '../lib/fechas.js';
 import { ESTADOS, FORMAS_DESCARGA, RECURSOS_SUGERIDOS, TIPOS, horaFin, tipoInfo } from '../lib/useEventos.js';
+import { colorBase } from '../lib/materiales.js';
 
 const DURACIONES = [15, 30, 45, 60, 90, 120, 180];
 
@@ -48,7 +49,7 @@ function valoresIniciales(evento, fechaSugerida, horaSugerida, obraActivaId) {
   };
 }
 
-export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraActivaId, esAdmin, onGuardar, onCancelar, onEliminar, onEliminarSerie, buscarConflictos }) {
+export default function EventoForm({ eventos = [], evento, fechaSugerida, horaSugerida, obraActivaId, esAdmin, onGuardar, onCancelar, onEliminar, onEliminarSerie, buscarConflictos }) {
   const [datos, setDatos] = useState(() => valoresIniciales(evento, fechaSugerida, horaSugerida, obraActivaId));
 
   // Repetición (solo al crear): 'no' | 'semanal' | 'diaria' (lunes a sábado).
@@ -112,6 +113,18 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
   }
 
   const esRecepcion = datos.tipo === 'recepcion';
+
+  // Sugerencias: primero los materiales que ya se usan en la obra, después los genéricos.
+  const sugerencias = useMemo(() => {
+    const vistos = new Map();
+    for (const ev of eventos) {
+      const m = (ev.material || '').trim();
+      if (m && !vistos.has(m.toLowerCase())) vistos.set(m.toLowerCase(), m);
+    }
+    const deObra = [...vistos.values()].sort((a, b) => a.localeCompare(b, 'es'));
+    return [...deObra, ...RECURSOS_SUGERIDOS.filter((r) => !vistos.has(r.toLowerCase()))];
+  }, [eventos]);
+  const colorMaterial = colorBase(datos.material);
 
   return (
     <form onSubmit={submit} className="space-y-4">
@@ -179,15 +192,19 @@ export default function EventoForm({ evento, fechaSugerida, horaSugerida, obraAc
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label={`Tipo de recurso a ${esRecepcion ? 'recibir' : 'despachar'}`}>
-          <Input
-            list="recursos-sugeridos"
-            value={datos.material}
-            onChange={(e) => set('material', e.target.value)}
-            placeholder="Ej: Hormigón, Fierro, Áridos..."
-          />
+        <Field label={esRecepcion ? 'Material que llegará' : 'Material a despachar'} hint="Es el nombre que se verá en el calendario." required>
+          <div className="flex items-center gap-2">
+            <span className="h-8 w-2 shrink-0" style={{ backgroundColor: colorMaterial || 'transparent' }} aria-hidden="true" />
+            <Input
+              list="recursos-sugeridos"
+              value={datos.material || ''}
+              onChange={(e) => set('material', e.target.value)}
+              placeholder="Ej: Cerámica blanca 30x60, Yeso cartón 15 mm…"
+              required
+            />
+          </div>
           <datalist id="recursos-sugeridos">
-            {RECURSOS_SUGERIDOS.map((r) => (
+            {sugerencias.map((r) => (
               <option key={r} value={r} />
             ))}
           </datalist>
