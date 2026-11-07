@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+
 // Componentes base con el estilo "Plano técnico": rojo RVC, tinta carbón, líneas finas y esquinas rectas.
 
 export function Card({ children, className = '' }) {
@@ -56,18 +58,65 @@ export function Textarea(props) {
   return <textarea {...props} className={`${CAMPO} ${props.className || ''}`} />;
 }
 
-export function Modal({ open, onClose, title, children, wide }) {
+export function Modal({ open, ...props }) {
   if (!open) return null;
+  return <Ventana {...props} />;
+}
+
+// Ventana que se puede arrastrar desde la barra del título para ver lo que hay detrás.
+// Al moverla, el fondo se aclara; siempre queda a la vista una parte de la barra para recuperarla.
+function Ventana({ onClose, title, children, wide }) {
+  const [desplazamiento, setDesplazamiento] = useState({ x: 0, y: 0 });
+  const caja = useRef(null);
+  const arrastre = useRef(null);
+
+  function empezar(e) {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    const r = caja.current.getBoundingClientRect();
+    arrastre.current = { x: e.clientX, y: e.clientY, base: desplazamiento, r };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function mover(e) {
+    const a = arrastre.current;
+    if (!a) return;
+    const visible = 80; // px de la barra que nunca salen de la pantalla
+    const dx = Math.min(Math.max(e.clientX - a.x, visible - a.r.right), window.innerWidth - visible - a.r.left);
+    const dy = Math.min(Math.max(e.clientY - a.y, -a.r.top), window.innerHeight - 56 - a.r.top);
+    setDesplazamiento({ x: a.base.x + dx, y: a.base.y + dy });
+  }
+
+  function soltar() {
+    arrastre.current = null;
+  }
+
+  const movida = desplazamiento.x !== 0 || desplazamiento.y !== 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4 no-print">
-      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[90vh] overflow-y-auto border border-tinta bg-white shadow-xl`}>
-        <div className="flex items-center justify-between border-b-4 border-rvc bg-tinta px-5 py-3 text-white">
-          <h3 className="text-base font-bold">{title}</h3>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 no-print ${movida ? 'bg-tinta/10' : 'bg-tinta/40'}`}>
+      <div
+        ref={caja}
+        className={`flex w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[90vh] flex-col border border-tinta bg-white shadow-xl`}
+        style={{ transform: `translate(${desplazamiento.x}px, ${desplazamiento.y}px)` }}
+      >
+        <div
+          onPointerDown={empezar}
+          onPointerMove={mover}
+          onPointerUp={soltar}
+          onPointerCancel={soltar}
+          onDoubleClick={() => setDesplazamiento({ x: 0, y: 0 })}
+          title="Arrastrá para mover la ventana (doble clic: volver al centro)"
+          className="flex shrink-0 cursor-move touch-none select-none items-center justify-between border-b-4 border-rvc bg-tinta px-5 py-3 text-white"
+        >
+          <h3 className="flex items-center gap-2 text-base font-bold">
+            <span className="text-papel/50" aria-hidden="true">⠿</span>
+            {title}
+          </h3>
           <button onClick={onClose} aria-label="Cerrar" className="flex h-9 w-9 items-center justify-center text-papel/80 hover:bg-white/10 hover:text-papel">
             ✕
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-5 py-4">{children}</div>
       </div>
     </div>
   );
