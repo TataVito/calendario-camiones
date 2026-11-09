@@ -1,14 +1,21 @@
 name: Mantener Supabase activo
 
 # El plan gratis de Supabase pausa el proyecto tras 7 días sin uso (vacaciones, feriados).
-# Esta tarea llama a la función ping (lee las tablas principales y solo devuelve "ok") lunes y jueves.
+# Todos los días:
+#  1. Llama a la función ping (lee las tablas principales y solo devuelve "ok").
+#  2. Revisa que el sitio publicado responda.
+# Si algo falla, la tarea queda en rojo y GitHub manda un correo al dueño del repositorio
+# (aviso de "Run failed"). Así uno se entera antes que la obra.
+#  3. Vuelve a habilitar las tareas programadas: GitHub las apaga solas si el repositorio pasa
+#     60 días sin cambios, y entonces no habría ni ping ni respaldo semanal.
 on:
   schedule:
-    - cron: '17 12 * * 1,4'
+    - cron: '17 12 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   ping:
@@ -16,7 +23,31 @@ jobs:
     steps:
       - name: Ping a Supabase
         run: |
-          respuesta=$(curl -sS --fail-with-body -X POST "${{ vars.VITE_SUPABASE_URL }}/rest/v1/rpc/ping" \
-            -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" -H "Content-Type: application/json" -d '{}')
+          for intento in 1 2 3; do
+            respuesta=$(curl -sS --max-time 30 --fail-with-body -X POST "${{ vars.VITE_SUPABASE_URL }}/rest/v1/rpc/ping" \
+              -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" -H "Content-Type: application/json" -d '{}') && break
+            echo "Intento $intento falló; se reintenta en 60 s."
+            sleep 60
+          done
           echo "Respuesta: $respuesta"
-          test "$respuesta" = '"ok"'
+          if [ "$respuesta" != '"ok"' ]; then
+            echo "::error::Supabase no responde. Puede estar pausado: entrar a supabase.com/dashboard y presionar Restore."
+            exit 1
+          fi
+
+      - name: Sitio publicado
+        run: |
+          codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://tatavito.github.io/calendario-camiones/")
+          echo "HTTP $codigo"
+          if [ "$codigo" != "200" ]; then
+            echo "::error::El sitio publicado respondió HTTP $codigo."
+            exit 1
+          fi
+
+      - name: Mantener habilitadas las tareas programadas
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for wf in mantener-activo.yml respaldo.yml; do
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/$wf/enable" && echo "$wf habilitada"
+          done

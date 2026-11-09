@@ -10,7 +10,7 @@ export function accionInfo(value) {
   return ACCIONES.find((a) => a.value === value) || ACCIONES[1];
 }
 
-export const TABLAS = { eventos: 'Camión', obras: 'Obra', usuarios: 'Usuario', evento_fotos: 'Foto' };
+export const TABLAS = { eventos: 'Camión', obras: 'Obra', usuarios: 'Usuario', evento_fotos: 'Foto', evento_comentarios: 'Comentario' };
 
 // Columnas que se muestran en los cambios, con su etiqueta y cómo presentar el valor.
 const COLUMNAS = {
@@ -35,6 +35,8 @@ const COLUMNAS = {
   inicio_proceso_real: { label: 'Inicio descarga real', fmt: (v) => fechaHora(v) },
   salida_real: { label: 'Salida real', fmt: (v) => fechaHora(v) },
   ruta: { label: 'Archivo', fmt: (v) => v.split('/').pop() },
+  texto: { label: 'Comentario' },
+  ref_calendario: { label: 'Ref. calendario' },
 };
 
 function fmt(col, v) {
@@ -70,6 +72,7 @@ export function resumen(entrada) {
   }
   if (entrada.tabla === 'obras') return f.nombre || '';
   if (entrada.tabla === 'evento_fotos') return `Foto de guía (${f.subido_por_usuario || '—'})`;
+  if (entrada.tabla === 'evento_comentarios') return `Comentario de ${f.autor_usuario || '—'}`;
   return f.usuario || '';
 }
 

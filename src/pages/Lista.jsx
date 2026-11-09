@@ -7,7 +7,7 @@ import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 import { exportarExcel } from '../lib/exportarExcel.js';
 import ImportarCalendario from '../components/ImportarCalendario.jsx';
 
-export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, usuario, onRango, recargar, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
+export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, esAdmin, onRango, recargar, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [tipo, setTipo] = useState('');
@@ -205,7 +205,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
               onCerrar={() => setModal(null)}
               onEditar={soloLectura(eventoVivo) ? undefined : () => setModal({ evento: eventoVivo, editando: true })}
               onActualizar={soloLectura(eventoVivo) ? undefined : (datos) => actualizar(eventoVivo.id, datos)}
-              usuario={usuario}
+              puedeComentar={autenticado}
               esAdmin={esAdmin}
               completado={autenticado}
               puedeSubirFotos={autenticado}

@@ -102,7 +102,7 @@ function FormularioUsuario({ usuario, esUnoMismo, esSuper, obras, obrasAsignadas
         <Field label={usuario ? 'Nueva clave' : 'Clave'} required={!usuario} hint={usuario ? 'Dejala vacía para no cambiarla.' : `Mínimo ${CLAVE_MIN} caracteres.`}>
           <Input type="password" value={clave} onChange={(e) => setClave(e.target.value)} autoComplete="new-password" required={!usuario} />
         </Field>
-        <Field label="Rol" required hint={esUnoMismo ? 'No podés cambiar tu propio rol.' : undefined}>
+        <Field label="Rol" required hint={esUnoMismo ? 'No puedes cambiar tu propio rol.' : undefined}>
           <Select value={rol} onChange={(e) => setRol(e.target.value)} disabled={esUnoMismo}>
             {ROLES.filter((r) => esSuper || ROLES_ADMIN_OBRA.includes(r.value) || r.value === rol).map((r) => (
               <option key={r.value} value={r.value}>
@@ -433,7 +433,7 @@ function ImportarLegado({ alTerminar }) {
     <Card className="border-[#B07A1E] bg-[#F6EBD4] p-4">
       <h2 className="mb-1 text-base font-semibold text-gray-800">Datos de la versión anterior en este navegador</h2>
       <p className="mb-3 text-sm text-gray-600">
-        Encontré {obras.length} obras y {eventos.length} camiones guardados solo en este equipo. Podés subirlos a la base compartida (se
+        Encontré {obras.length} obras y {eventos.length} camiones guardados solo en este equipo. Puedes subirlos a la base compartida (se
         agregan a lo que ya exista).
       </p>
       {estado ? (

@@ -105,7 +105,7 @@ function Ventana({ onClose, title, children, wide }) {
           onPointerUp={soltar}
           onPointerCancel={soltar}
           onDoubleClick={() => setDesplazamiento({ x: 0, y: 0 })}
-          title="Arrastrá para mover la ventana (doble clic: volver al centro)"
+          title="Arrastra para mover la ventana (doble clic: volver al centro)"
           className="flex shrink-0 cursor-move touch-none select-none items-center justify-between border-b-4 border-rvc bg-tinta px-5 py-3 text-white"
         >
           <h3 className="flex items-center gap-2 text-base font-bold">

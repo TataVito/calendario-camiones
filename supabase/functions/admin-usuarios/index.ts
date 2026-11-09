@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     if (!Array.isArray(pedidas) || !pedidas.every((o) => typeof o === 'string' && UUID_RE.test(o))) return 'Obras inválidas';
     if (esSuper) return [...new Set(pedidas as string[])];
     const ajenas = (pedidas as string[]).filter((o) => !misObras!.has(o));
-    if (ajenas.length) return 'Solo podés asignar tus propias obras.';
+    if (ajenas.length) return 'Solo puedes asignar tus propias obras.';
     return [...new Set([...actuales.filter((o) => !misObras!.has(o)), ...(pedidas as string[])])];
   };
   const guardarObras = async (id: string, obras: string[]) => {
@@ -105,10 +105,10 @@ Deno.serve(async (req) => {
     const rol = String(body.rol ?? 'lector');
     if (!USUARIO_RE.test(usuario)) return responder(req, 400, { error: 'Usuario inválido: 3 a 30 caracteres, solo letras minúsculas, números, punto, guion.' });
     if (clave.length < CLAVE_MIN) return responder(req, 400, { error: `La clave debe tener al menos ${CLAVE_MIN} caracteres.` });
-    if (!rolesPermitidos.includes(rol)) return responder(req, 403, { error: 'No podés asignar ese rol.' });
+    if (!rolesPermitidos.includes(rol)) return responder(req, 403, { error: 'No puedes asignar ese rol.' });
     const obras = obrasFinales(body.obras ?? [], []);
     if (typeof obras === 'string') return responder(req, 403, { error: obras });
-    if (!esSuper && obras.length === 0) return responder(req, 400, { error: 'Asigná al menos una de tus obras.' });
+    if (!esSuper && obras.length === 0) return responder(req, 400, { error: 'Asigna al menos una de tus obras.' });
 
     const { data, error } = await admin.auth.admin.createUser({
       email: `${usuario}@${DOMINIO}`,
@@ -134,14 +134,14 @@ Deno.serve(async (req) => {
     const antes = await leerPerfil(id);
     if (!antes) return responder(req, 404, { error: 'Usuario no encontrado' });
     const esUnoMismo = id === quien.user.id;
-    if (!esUnoMismo && !administra(antes)) return responder(req, 403, { error: 'No podés modificar a este usuario.' });
+    if (!esUnoMismo && !administra(antes)) return responder(req, 403, { error: 'No puedes modificar a este usuario.' });
 
     const cambios: Record<string, string> = {};
     if (body.nombre !== undefined) cambios.nombre = String(body.nombre).trim();
     if (body.rol !== undefined && body.rol !== antes.rol) {
       const rol = String(body.rol);
-      if (esUnoMismo) return responder(req, 400, { error: 'No podés cambiar tu propio rol.' });
-      if (!rolesPermitidos.includes(rol)) return responder(req, 403, { error: 'No podés asignar ese rol.' });
+      if (esUnoMismo) return responder(req, 400, { error: 'No puedes cambiar tu propio rol.' });
+      if (!rolesPermitidos.includes(rol)) return responder(req, 403, { error: 'No puedes asignar ese rol.' });
       cambios.rol = rol;
     }
     let obras: string[] | undefined;
@@ -172,13 +172,13 @@ Deno.serve(async (req) => {
   if (accion === 'eliminar') {
     const id = String(body.id ?? '');
     if (!id) return responder(req, 400, { error: 'Falta el usuario' });
-    if (id === quien.user.id) return responder(req, 400, { error: 'No podés eliminar tu propio usuario.' });
+    if (id === quien.user.id) return responder(req, 400, { error: 'No puedes eliminar tu propio usuario.' });
     const antes = await leerPerfil(id);
     if (!antes) return responder(req, 404, { error: 'Usuario no encontrado' });
-    if (!administra(antes)) return responder(req, 403, { error: 'No podés eliminar a este usuario.' });
+    if (!administra(antes)) return responder(req, 403, { error: 'No puedes eliminar a este usuario.' });
     // Un admin de obra no puede dejar sin acceso a alguien que también trabaja en otras obras.
     if (!esSuper && antes.obras.some((o) => !misObras!.has(o))) {
-      return responder(req, 403, { error: 'Este usuario también trabaja en otras obras: quitale tus obras editándolo en vez de eliminarlo.' });
+      return responder(req, 403, { error: 'Este usuario también trabaja en otras obras: quítale tus obras editándolo en vez de eliminarlo.' });
     }
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) return responder(req, 400, { error: error.message });

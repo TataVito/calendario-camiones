@@ -18,6 +18,7 @@ const CAMPOS = {
   observaciones: 'observaciones',
   choqueAceptado: 'choque_aceptado',
   serieId: 'serie_id',
+  refCalendario: 'ref_calendario',
 };
 
 export function aEvento(fila) {
@@ -30,6 +31,7 @@ export function aEvento(fila) {
     llegadaReal: fila.llegada_real,
     inicioProcesoReal: fila.inicio_proceso_real,
     salidaReal: fila.salida_real,
+    ultimoComentario: fila.ultimo_comentario || '',
   };
   for (const [campo, columna] of Object.entries(CAMPOS)) ev[campo] = fila[columna];
   return ev;

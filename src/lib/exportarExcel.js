@@ -28,6 +28,7 @@ export async function exportarExcel(eventos, { obra, desde, hasta }) {
     'Forma de descarga': formaDescargaInfo(ev.formaDescarga).label,
     Estado: estadoInfo(ev.estado).label,
     Observaciones: ev.observaciones || '',
+    'Último comentario': ev.ultimoComentario || '',
     'Creado por': ev.creadoPorUsuario || '',
     'Modificado por': ev.actualizadoPorUsuario || '',
     'Última modificación': fechaHora(ev.actualizadoEn),

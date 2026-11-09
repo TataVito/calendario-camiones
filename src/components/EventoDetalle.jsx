@@ -3,7 +3,8 @@ import { Button, Textarea } from './ui.jsx';
 import Autoria from './Autoria.jsx';
 import FotosGuia from './FotosGuia.jsx';
 import { estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
-import { agregarComentario, colorBase, leerObservaciones } from '../lib/materiales.js';
+import { colorBase, leerObservaciones } from '../lib/materiales.js';
+import { useComentarios } from '../lib/comentarios.js';
 import { etiquetaFechaLarga } from '../lib/fechas.js';
 
 function Dato({ label, valor }) {
@@ -24,11 +25,13 @@ const CIERRES = [
 
 // Ficha del camión: lo esencial para la obra (material, OC, proveedor y cantidades).
 // Lo demás (forma de descarga, autoría) queda plegado en "Más información".
-// Con onActualizar (quien puede editar) se marca cómo quedó y se agregan comentarios sin abrir el formulario.
-export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar, usuario, esAdmin, completado, puedeSubirFotos }) {
+// Con onActualizar (quien puede editar) se marca cómo quedó sin abrir el formulario.
+// Con puedeComentar se agregan comentarios (también en camiones completados).
+export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar, puedeComentar, esAdmin, completado, puedeSubirFotos }) {
   const estado = estadoInfo(evento.estado);
   const esRecepcion = evento.tipo === 'recepcion';
-  const { items, notas, comentarios } = leerObservaciones(evento.observaciones);
+  const { items, notas } = leerObservaciones(evento.observaciones);
+  const { comentarios, agregar: agregarComentario, error: errorComentario } = useComentarios(evento);
   const color = colorBase(evento.material) || '#26262B';
 
   // Estado elegido que espera confirmación (con comentario opcional) y comentario suelto.
@@ -50,12 +53,11 @@ export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar
   }
 
   async function guardar() {
-    const datos = {};
-    if (eligiendo) datos.estado = eligiendo;
-    if (texto.trim()) datos.observaciones = agregarComentario(evento.observaciones, texto, usuario);
-    if (!Object.keys(datos).length) return cancelar();
+    if (!eligiendo && !texto.trim()) return cancelar();
     setGuardando(true);
-    const ok = await onActualizar(datos);
+    let ok = true;
+    if (eligiendo && eligiendo !== evento.estado) ok = await onActualizar({ estado: eligiendo });
+    if (ok && texto.trim()) ok = await agregarComentario(texto);
     setGuardando(false);
     if (ok) cancelar();
   }
@@ -117,11 +119,11 @@ export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar
         </div>
       )}
 
-      {onActualizar && (
+      {(onActualizar || puedeComentar) && (
         <div className="space-y-2 border border-gray-300 p-3">
-          <div className="font-mono text-[11px] uppercase tracking-wide text-gray-500">¿Cómo quedó {esRecepcion ? 'la recepción' : 'el despacho'}?</div>
+          {onActualizar && <div className="font-mono text-[11px] uppercase tracking-wide text-gray-500">¿Cómo quedó {esRecepcion ? 'la recepción' : 'el despacho'}?</div>}
           <div className="flex flex-wrap gap-2">
-            {CIERRES.map((c) => (
+            {onActualizar && CIERRES.map((c) => (
               <button
                 key={c.value}
                 type="button"
@@ -133,15 +135,16 @@ export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar
                 {c.label}
               </button>
             ))}
-            <button
+            {puedeComentar && <button
               type="button"
               disabled={guardando}
               onClick={() => abrir(null)}
               className="min-h-[40px] border border-tinta px-3 text-sm font-medium text-tinta hover:bg-tinta/5"
             >
               💬 Agregar comentario
-            </button>
+            </button>}
           </div>
+          {errorComentario && <p className="text-sm text-[#A8232A]">No se pudo guardar el comentario: {errorComentario}</p>}
 
           {(eligiendo || comentando) && (
             <div className="space-y-2 pt-1">
@@ -199,7 +202,7 @@ export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar
             </>
           ) : (
             <>
-              Tu usuario es de solo lectura. Para modificar o eliminar programaciones, pedile a un administrador el rol{' '}
+              Tu usuario es de solo lectura. Para modificar o eliminar programaciones, pídele a un administrador el rol{' '}
               <span className="font-medium text-gray-700">Editor</span>.
             </>
           )}

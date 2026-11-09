@@ -22,9 +22,16 @@ async function cargarEventos({ obraId, desde, hasta }) {
 
 const pct = (n, d) => (d ? `${Math.round((n / d) * 100)}%` : '—');
 
+const ABIERTOS = ['programado', 'confirmado', 'en_porteria', 'en_proceso'];
+
 // Agrupa y calcula los indicadores de cada grupo.
 function indicadores(lista) {
+  const hoy = hoyChile();
   const activos = lista.filter((ev) => ev.estado !== 'cancelado');
+  const completados = activos.filter((ev) => ev.estado === 'completado').length;
+  const incompletos = activos.filter((ev) => ev.estado === 'incompleto').length;
+  const noRecibidos = activos.filter((ev) => ev.estado === 'no_recibido').length;
+  const cerrados = completados + incompletos + noRecibidos;
   const llegados = activos.filter((ev) => ev.llegadaReal);
   const puntuales = llegados.filter((ev) => esPuntual(ev));
   const atrasos = llegados.map(atrasoMin).filter((a) => a > TOLERANCIA_MIN);
@@ -32,9 +39,15 @@ function indicadores(lista) {
     camiones: activos.length,
     recepciones: activos.filter((ev) => ev.tipo === 'recepcion').length,
     despachos: activos.filter((ev) => ev.tipo === 'despacho').length,
-    completados: activos.filter((ev) => ev.estado === 'completado').length,
-    incompletos: activos.filter((ev) => ev.estado === 'incompleto').length,
-    noRecibidos: activos.filter((ev) => ev.estado === 'no_recibido').length,
+    completados,
+    incompletos,
+    noRecibidos,
+    cerrados,
+    // De los camiones cerrados, cuántos llegaron completos.
+    cumplimiento: pct(completados, cerrados),
+    cumplimientoNum: cerrados ? completados / cerrados : null,
+    // Días anteriores a hoy que siguen abiertos: nadie anotó cómo terminaron.
+    sinCerrar: activos.filter((ev) => ev.fecha < hoy && ABIERTOS.includes(ev.estado)).length,
     cancelados: lista.length - activos.length,
     conRegistro: llegados.length,
     puntualidad: pct(puntuales.length, llegados.length),
@@ -50,6 +63,33 @@ function agrupar(lista, clave) {
   for (const ev of lista) (grupos[clave(ev) || '(sin dato)'] ||= []).push(ev);
   return Object.entries(grupos)
     .map(([nombre, evs]) => ({ nombre, ...indicadores(evs) }))
+    .sort((a, b) => b.camiones - a.camiones);
+}
+
+// Peor cumplimiento primero (los que no tienen camiones cerrados, al final).
+function porCumplimiento(filas) {
+  return [...filas].sort((a, b) => (a.cumplimientoNum ?? 2) - (b.cumplimientoNum ?? 2) || b.camiones - a.camiones);
+}
+
+function colorCumplimiento(f) {
+  if (f.cumplimientoNum === null) return 'text-gray-400';
+  if (f.cumplimientoNum < 0.7) return 'font-semibold text-[#A8232A]';
+  if (f.cumplimientoNum < 0.9) return 'font-semibold text-[#8A5A0B]';
+  return 'text-[#2E6B4F]';
+}
+
+// Agrupa por proveedor y material a la vez.
+function agruparProveedorMaterial(lista) {
+  const grupos = new Map();
+  for (const ev of lista) {
+    const proveedor = ev.proveedorCliente?.trim() || '(sin dato)';
+    const material = ev.material?.trim() || '(sin dato)';
+    const clave = JSON.stringify([proveedor, material]);
+    if (!grupos.has(clave)) grupos.set(clave, { proveedor, material, evs: [] });
+    grupos.get(clave).evs.push(ev);
+  }
+  return [...grupos.values()]
+    .map(({ proveedor, material, evs }) => ({ nombre: `${proveedor} · ${material}`, proveedor, material, ...indicadores(evs) }))
     .sort((a, b) => b.camiones - a.camiones);
 }
 
@@ -113,16 +153,21 @@ function GraficoPorDia({ dias }) {
   );
 }
 
-function TablaGrupos({ titulo, filas, etiqueta }) {
+function TablaGrupos({ titulo, filas, etiqueta, orden }) {
+  const lista = orden === 'cumplimiento' ? porCumplimiento(filas) : filas;
   return (
     <Card className="overflow-x-auto">
       <h3 className="px-4 pt-3 text-sm font-semibold text-gray-800">{titulo}</h3>
-      <table className="mt-2 w-full min-w-[640px] text-left text-sm">
+      <table className="mt-2 w-full min-w-[960px] text-left text-sm">
         <thead className="bg-gray-50 text-xs uppercase text-gray-500">
           <tr>
             <th className="px-3 py-2">{etiqueta}</th>
             <th className="px-3 py-2 text-right">Camiones</th>
-            <th className="px-3 py-2 text-right">Completados</th>
+            <th className="px-3 py-2 text-right">Completos</th>
+            <th className="px-3 py-2 text-right">Incompletos</th>
+            <th className="px-3 py-2 text-right">No recibidos</th>
+            <th className="px-3 py-2 text-right" title="De los camiones cerrados, cuántos llegaron completos">Cumplimiento</th>
+            <th className="px-3 py-2 text-right" title="Días anteriores a hoy sin anotar cómo terminaron">Sin cerrar</th>
             <th className="px-3 py-2 text-right">Puntualidad</th>
             <th className="px-3 py-2 text-right">Atraso prom.</th>
             <th className="px-3 py-2 text-right">En obra prom.</th>
@@ -130,11 +175,17 @@ function TablaGrupos({ titulo, filas, etiqueta }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {filas.map((f) => (
+          {lista.map((f) => (
             <tr key={f.nombre}>
               <td className="px-3 py-2 text-gray-900">{f.nombre}</td>
               <td className="px-3 py-2 text-right">{f.camiones}</td>
               <td className="px-3 py-2 text-right">{f.completados}</td>
+              <td className={`px-3 py-2 text-right ${f.incompletos ? 'text-[#8A5A0B]' : 'text-gray-400'}`}>{f.incompletos}</td>
+              <td className={`px-3 py-2 text-right ${f.noRecibidos ? 'text-[#A8232A]' : 'text-gray-400'}`}>{f.noRecibidos}</td>
+              <td className={`px-3 py-2 text-right ${colorCumplimiento(f)}`}>
+                {f.cumplimiento} <span className="text-xs font-normal text-gray-400">({f.cerrados})</span>
+              </td>
+              <td className={`px-3 py-2 text-right ${f.sinCerrar ? 'text-[#8A5A0B]' : 'text-gray-400'}`}>{f.sinCerrar}</td>
               <td className="px-3 py-2 text-right">
                 {f.puntualidad} <span className="text-xs text-gray-400">({f.conRegistro})</span>
               </td>
@@ -160,6 +211,8 @@ async function exportar(datos, nombre) {
     Incompletos: f.incompletos,
     'No recibidos': f.noRecibidos,
     Cancelados: f.cancelados,
+    Cumplimiento: f.cumplimiento,
+    'Sin cerrar': f.sinCerrar,
     'Con registro portería': f.conRegistro,
     Puntualidad: f.puntualidad,
     Atrasados: f.atrasados,
@@ -170,6 +223,16 @@ async function exportar(datos, nombre) {
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet([fila({ nombre: 'Total', ...datos.total })]), 'Resumen');
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(datos.porProveedor.map(fila)), 'Por proveedor');
+  XLSX.utils.book_append_sheet(
+    libro,
+    XLSX.utils.json_to_sheet(
+      datos.porProveedorMaterial.map((f) => {
+        const { Nombre, ...resto } = fila(f);
+        return { Proveedor: f.proveedor, Material: f.material, ...resto };
+      }),
+    ),
+    'Proveedor y material',
+  );
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(datos.porRecurso.map(fila)), 'Por recurso');
   if (datos.porObra.length > 1) XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(datos.porObra.map(fila)), 'Por obra');
   XLSX.utils.book_append_sheet(
@@ -188,6 +251,7 @@ export default function Reportes({ obras, obraActivaId }) {
   const [eventos, setEventos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
+  const [orden, setOrden] = useState('camiones');
 
   useEffect(() => {
     if (!desde || !hasta || desde > hasta) return;
@@ -221,6 +285,7 @@ export default function Reportes({ obras, obraActivaId }) {
       total: indicadores(eventos),
       porProveedor: agrupar(eventos, (ev) => ev.proveedorCliente?.trim()),
       porRecurso: agrupar(eventos, (ev) => ev.material?.trim()),
+      porProveedorMaterial: agruparProveedorMaterial(eventos),
       porObra: agrupar(eventos, (ev) => nombreObra(ev.obraId)),
       dias,
     };
@@ -264,6 +329,8 @@ export default function Reportes({ obras, obraActivaId }) {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Tile titulo="Camiones" valor={t.camiones} detalle={`${t.recepciones} recepciones · ${t.despachos} despachos`} />
         <Tile titulo="Completados" valor={t.completados} detalle={`${t.incompletos} incompletos · ${t.noRecibidos} no recibidos · ${t.cancelados} cancelados`} />
+        <Tile titulo="Cumplimiento" valor={t.cumplimiento} detalle={`llegaron completos, de ${t.cerrados} cerrados`} />
+        <Tile titulo="Sin cerrar" valor={t.sinCerrar} detalle="días anteriores sin anotar cómo terminaron" />
         <Tile
           titulo={`Puntualidad (±${TOLERANCIA_MIN} min)`}
           valor={t.puntualidad}
@@ -277,7 +344,7 @@ export default function Reportes({ obras, obraActivaId }) {
       <Card className="p-4">
         <h3 className="mb-1 text-sm font-semibold text-gray-800">Camiones por día</h3>
         <p className="mb-2 text-xs text-gray-500">{tituloAlcance} · sin cancelados</p>
-        {datos.dias.length ? <GraficoPorDia dias={datos.dias} /> : <p className="text-sm text-gray-400">Elegí un rango de fechas válido.</p>}
+        {datos.dias.length ? <GraficoPorDia dias={datos.dias} /> : <p className="text-sm text-gray-400">Elige un rango de fechas válido.</p>}
       </Card>
 
       {t.conRegistro === 0 && eventos.length > 0 && (
@@ -287,9 +354,29 @@ export default function Reportes({ obras, obraActivaId }) {
         </p>
       )}
 
-      <TablaGrupos titulo="Por proveedor / cliente" etiqueta="Proveedor / cliente" filas={datos.porProveedor} />
-      <TablaGrupos titulo="Por recurso" etiqueta="Recurso" filas={datos.porRecurso} />
-      {!alcance && datos.porObra.length > 1 && <TablaGrupos titulo="Por obra" etiqueta="Obra" filas={datos.porObra} />}
+      <div className="flex flex-wrap items-center gap-2 text-sm no-print">
+        <span className="text-gray-600">Ordenar tablas por:</span>
+        {[
+          ['camiones', 'Más camiones'],
+          ['cumplimiento', 'Peor cumplimiento'],
+        ].map(([v, l]) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={orden === v}
+            onClick={() => setOrden(v)}
+            className={`min-h-[32px] border px-3 text-xs font-medium ${orden === v ? 'border-tinta bg-tinta text-white' : 'border-tinta bg-white text-tinta hover:bg-tinta/5'}`}
+          >
+            {l}
+          </button>
+        ))}
+        <span className="text-xs text-gray-500">Cumplimiento = completos ÷ cerrados (completos + incompletos + no recibidos).</span>
+      </div>
+
+      <TablaGrupos titulo="Por proveedor / cliente" etiqueta="Proveedor / cliente" filas={datos.porProveedor} orden={orden} />
+      <TablaGrupos titulo="Por proveedor y material" etiqueta="Proveedor · material" filas={datos.porProveedorMaterial} orden={orden} />
+      <TablaGrupos titulo="Por recurso" etiqueta="Recurso" filas={datos.porRecurso} orden={orden} />
+      {!alcance && datos.porObra.length > 1 && <TablaGrupos titulo="Por obra" etiqueta="Obra" filas={datos.porObra} orden={orden} />}
     </div>
   );
 }

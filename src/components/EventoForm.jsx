@@ -174,7 +174,7 @@ export default function EventoForm({ eventos = [], evento, fechaSugerida, horaSu
             .map((c) => `${tipoInfo(c.tipo).label}${c.proveedorCliente ? ` (${c.proveedorCliente})` : ''} ${c.horaInicio}–${horaFin(c)}`)
             .join(', ')}
           .
-          Solo hay un espacio disponible: reprogramá o marcá la casilla para agendarlo igual.
+          Solo hay un espacio disponible: reprograma o marca la casilla para agendarlo igual.
           <label className="mt-2 flex min-h-[40px] items-center gap-2 font-medium">
             <input
               type="checkbox"
@@ -261,7 +261,7 @@ export default function EventoForm({ eventos = [], evento, fechaSugerida, horaSu
               </Field>
               <p className="text-sm text-gray-600">
                 {serieVacia ? (
-                  <span className="text-[#A8232A]">Elegí al menos un día que caiga dentro del rango.</span>
+                  <span className="text-[#A8232A]">Elige al menos un día que caiga dentro del rango.</span>
                 ) : (
                   <>
                     Se agendarán <b>{fechas.length} camiones</b>

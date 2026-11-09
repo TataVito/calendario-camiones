@@ -72,7 +72,7 @@ export default function Login({ login }) {
             {enviando ? 'Ingresando…' : 'Ingresar'}
           </Button>
         </form>
-        <p className="mt-4 text-center text-xs text-gray-400">¿No tenés acceso? Pedíselo a un administrador.</p>
+        <p className="mt-4 text-center text-xs text-gray-400">¿No tienes acceso? Pídeselo a un administrador.</p>
       </Card>
     </div>
   );

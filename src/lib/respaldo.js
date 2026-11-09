@@ -26,6 +26,7 @@ export async function descargarRespaldo() {
     ['Usuarios', 'perfiles', 'usuario'],
     ['Obras por usuario', 'obra_usuarios', 'obra_id'],
     ['Fotos', 'evento_fotos', 'subido_en'],
+    ['Comentarios', 'evento_comentarios', 'creado_en'],
     ['Historial', 'auditoria', 'id'],
   ];
   const libro = XLSX.utils.book_new();

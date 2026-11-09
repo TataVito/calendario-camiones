@@ -24,6 +24,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       # URL y llave publishable de Supabase: públicas por diseño (la seguridad es RLS).
       - run: npm run build
         env:

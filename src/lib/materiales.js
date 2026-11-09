@@ -1,5 +1,7 @@
 // Color propio por material (los mismos del calendario de despachos de la obra) y lectura de
 // la lista de materiales que el importador deja en observaciones.
+// Los comentarios viven en la tabla evento_comentarios (lib/comentarios.js); aquí solo se leen
+// los que quedaran como líneas "💬" en observaciones de antes de la migración del 09-11.
 
 import { MARCA_COMENTARIO, MARCA_REF, normalizar } from './importarCalendario.js';
 

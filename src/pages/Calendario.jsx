@@ -57,7 +57,7 @@ const MARCA_ESTADO = { completado: '✓', incompleto: '◐', no_recibido: '✕',
 
 // Último comentario agregado desde la ficha (para mostrarlo en el bloque del camión).
 function ultimoComentario(ev) {
-  return leerObservaciones(ev.observaciones).comentarios.at(-1)?.texto || '';
+  return ev.ultimoComentario || leerObservaciones(ev.observaciones).comentarios.at(-1)?.texto || '';
 }
 
 const PUNTO_TIPO = {
@@ -65,7 +65,7 @@ const PUNTO_TIPO = {
   despacho: 'bg-[#7A3E0C]',
 };
 
-export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, usuario, onRango, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
+export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin, onRango, agregar, agregarSerie, actualizar, eliminar, eliminarSerieDesde, buscarConflictos }) {
   // En el celular la semana de 7 columnas no cabe: se abre en vista Día.
   const [vista, setVista] = useState(() => (window.innerWidth < 640 ? 'dia' : 'semana')); // 'dia' | 'semana' | 'mes'
   const [diaReferencia, setDiaReferencia] = useState(hoyISO());
@@ -360,7 +360,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                   <button
                     key={ev.id}
                     onPointerDown={(e) => empezarArrastre(e, ev, PX_POR_MIN_DIA)}
-                    title={sePuedeMover(ev) ? 'Arrastrá para cambiar la hora' : undefined}
+                    title={sePuedeMover(ev) ? 'Arrastra para cambiar la hora' : undefined}
                     onClick={(e) => {
                       e.stopPropagation();
                       abrirSiNoSeArrastro(ev);
@@ -443,7 +443,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                     <button
                       key={ev.id}
                       onPointerDown={(e) => empezarArrastre(e, ev, PX_POR_MIN)}
-                      title={sePuedeMover(ev) ? 'Arrastrá para cambiar el día o la hora' : undefined}
+                      title={sePuedeMover(ev) ? 'Arrastra para cambiar el día o la hora' : undefined}
                       onClick={(e) => {
                         e.stopPropagation();
                         abrirSiNoSeArrastro(ev);
@@ -565,7 +565,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
               onCerrar={cerrar}
               onEditar={soloLectura(eventoVivo) ? undefined : () => setModal({ evento: eventoVivo, editando: true })}
               onActualizar={soloLectura(eventoVivo) ? undefined : (datos) => actualizar(eventoVivo.id, datos)}
-              usuario={usuario}
+              puedeComentar={autenticado}
               esAdmin={esAdmin}
               completado={autenticado}
               puedeSubirFotos={autenticado}

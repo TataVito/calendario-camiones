@@ -8,8 +8,9 @@
 //     .baked-note-text            -> nota del día (opcional)
 //   .modal-overlay#id             -> detalle: h2 (familia), .oc b, .prov b y la tabla de materiales
 //
-// Cada camión importado lleva en observaciones la línea "Ref. calendario: <id>". Así, al subir
-// una versión nueva del archivo, el mismo despacho se reconoce y solo se mueve si cambió de fecha.
+// Cada camión importado guarda el id del despacho en ref_calendario (antes, la línea
+// "Ref. calendario: <id>" en observaciones). Así, al subir una versión nueva del archivo, el
+// mismo despacho se reconoce y solo se mueve si cambió de fecha.
 
 import { sumarMinutos, toMinutos } from './useEventos.js';
 
@@ -95,12 +96,12 @@ export function observacionesDe(d, fechaImportacion, previas = '') {
   if (d.nota) lineas.push(`Nota del día: ${d.nota}`);
   const [a, m, dd] = fechaImportacion.split('-');
   lineas.push(`${MARCA_CALENDARIO} (${dd}-${m}-${a}).`);
-  lineas.push(`${MARCA_REF}${d.ref}`);
   for (const l of (previas || '').split('\n')) if (l.startsWith(MARCA_COMENTARIO)) lineas.push(l);
   return lineas.join('\n');
 }
 
 export function refDe(ev) {
+  if (ev.refCalendario) return ev.refCalendario;
   const i = (ev.observaciones || '').indexOf(MARCA_REF);
   return i < 0 ? '' : ev.observaciones.slice(i + MARCA_REF.length).split('\n')[0].trim();
 }

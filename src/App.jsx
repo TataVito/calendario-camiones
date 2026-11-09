@@ -5,6 +5,7 @@ import Administracion from './pages/Administracion.jsx';
 import Porteria from './pages/Porteria.jsx';
 import Reportes from './pages/Reportes.jsx';
 import ObrasModal from './components/ObrasModal.jsx';
+import PorCerrar from './components/PorCerrar.jsx';
 import { Button, Card } from './components/ui.jsx';
 import { ESTADOS_CERRADOS, useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
 import { useObras } from './lib/useObras.js';
@@ -79,7 +80,7 @@ function Principal({ sesion }) {
   } = useEventos(obraActivaId, rango);
   const { logout } = sesion;
   const cerrarPorInactividad = useCallback(
-    () => logout(`Tu sesión se cerró tras ${LIMITE_INACTIVIDAD_MIN / 60} horas sin uso. Volvé a ingresar.`),
+    () => logout(`Tu sesión se cerró tras ${LIMITE_INACTIVIDAD_MIN / 60} horas sin uso. Vuelve a ingresar.`),
     [logout],
   );
   useInactividad(cerrarPorInactividad);
@@ -220,16 +221,17 @@ function Principal({ sesion }) {
           <Administracion {...sesion} obras={obras} />
         ) : obras.length === 0 ? (
           <Card className="mx-auto mt-10 max-w-md p-6 text-center">
-            <h2 className="mb-2 text-lg font-semibold text-gray-800">{sesion.esSuper ? 'Todavía no hay obras' : 'No tenés obras asignadas'}</h2>
+            <h2 className="mb-2 text-lg font-semibold text-gray-800">{sesion.esSuper ? 'Todavía no hay obras' : 'No tienes obras asignadas'}</h2>
             <p className="mb-4 text-sm text-gray-500">
               {sesion.esSuper
-                ? 'Esta app coordina los camiones de cada obra por separado. Empezá creando una obra.'
-                : 'Pedile a un administrador que te asigne las obras que tenés que ver.'}
+                ? 'Esta app coordina los camiones de cada obra por separado. Empieza creando una obra.'
+                : 'Pídele a un administrador que te asigne las obras que tienes que ver.'}
             </p>
             {sesion.esSuper && <Button onClick={() => setModalObras(true)}>+ Crear obra</Button>}
           </Card>
         ) : (
           <>
+            {autenticado && !enPorteria && <PorCerrar obraId={obraActivaId} cambio={eventosDeObra} esAdmin={sesion.esAdmin} actualizar={actualizar} />}
 
             <div className={`mb-5 grid grid-cols-2 border border-tinta bg-white no-print md:grid-cols-4 ${enPorteria || tab === 'reportes' ? 'hidden' : ''}`}>
               <div className="border-b border-r border-gray-300 px-4 py-2 md:border-b-0">

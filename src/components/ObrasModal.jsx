@@ -47,7 +47,7 @@ export default function ObrasModal({ open, onClose, obras, obraActivaId, setObra
     <Modal open={open} onClose={onClose} title="Obras" wide>
       <div className="space-y-2">
         {obras.length === 0 && !creando && (
-          <p className="text-sm text-gray-500">Todavía no hay obras creadas. Agregá la primera para empezar a coordinar camiones.</p>
+          <p className="text-sm text-gray-500">Todavía no hay obras creadas. Agrega la primera para empezar a coordinar camiones.</p>
         )}
 
         {obras.map((obra) =>

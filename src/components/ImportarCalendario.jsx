@@ -76,6 +76,7 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
         forma_descarga: 'manual',
         estado: 'programado',
         observaciones: observacionesDe(d, hoy),
+        ref_calendario: d.ref,
         choque_aceptado: item.choque,
       });
       if (err) r.fallas.push(`${d.fecha} ${d.material}: ${err.message}`);
@@ -92,6 +93,7 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
           guia_oc: d.oc || item.evento.guiaOC,
           proveedor_cliente: d.proveedor || item.evento.proveedorCliente,
           observaciones: observacionesDe(d, hoy, item.evento.observaciones),
+          ref_calendario: d.ref,
           choque_aceptado: item.choque,
         })
         .eq('id', item.evento.id);
@@ -107,6 +109,7 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
           guia_oc: d.oc,
           proveedor_cliente: d.proveedor || evento.proveedorCliente,
           observaciones: observacionesDe(d, hoy, evento.observaciones),
+          ref_calendario: d.ref,
         })
         .eq('id', evento.id);
       if (err) r.fallas.push(`${d.fecha} ${d.material}: ${err.message}`);

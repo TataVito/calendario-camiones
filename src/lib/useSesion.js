@@ -52,7 +52,7 @@ export function useSesion() {
   const login = useCallback(async (usuario, clave) => {
     const { error } = await supabase.auth.signInWithPassword({ email: correoDeUsuario(usuario), password: clave });
     if (!error) return null;
-    if (/rate|too many/i.test(error.message)) return 'Demasiados intentos. Esperá unos minutos.';
+    if (/rate|too many/i.test(error.message)) return 'Demasiados intentos. Espera unos minutos.';
     return 'Usuario o clave incorrectos.';
   }, []);
 
