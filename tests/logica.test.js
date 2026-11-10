@@ -176,3 +176,85 @@ describe('tiempos de portería', () => {
     expect(tiempoDescargaMin({ inicioProcesoReal: '2026-11-06T12:00:00Z', salidaReal: '2026-11-06T12:40:00Z' })).toBe(40);
   });
 });
+
+// --- 2026-11-10: ícono del camión y pendientes ---
+import { MARCAS, marcaInfo, nombreCamion } from '../src/lib/useEventos.js';
+import { diasPendiente, enPeriodo, ordenar, textoDias } from '../src/lib/pendientes.js';
+
+describe('ícono del camión', () => {
+  it('se muestra junto al material', () => {
+    expect(nombreCamion(camion({ material: 'Poliestirenos', marca: 'retira_obra' }))).toBe('Poliestirenos 🚚');
+    expect(nombreCamion(camion({ material: 'Poliestirenos', marca: '' }))).toBe('Poliestirenos');
+    expect(nombreCamion(camion({ material: 'Tinas' }))).toBe('Tinas');
+  });
+  it('sin material usa el respaldo o el tipo', () => {
+    expect(nombreCamion(camion({ proveedorCliente: 'Volcán', marca: 'urgente' }), 'Volcán')).toBe('Volcán ⚡');
+    expect(nombreCamion(camion({ tipo: 'despacho' }))).toBe('Despacho');
+  });
+  it('un valor desconocido no rompe nada', () => {
+    expect(marcaInfo('xyz').icono).toBe('');
+    expect(marcaInfo(undefined).label).toBe('Sin ícono');
+    expect(MARCAS.map((m) => m.value)).toEqual(['', 'retira_obra', 'consolidar', 'urgente', 'revisar']);
+  });
+});
+
+function pendiente(datos) {
+  return { id: Math.random().toString(36).slice(2), descripcion: 'x', estado: 'pendiente', fechaOrigen: HOY, creadoEn: '2026-11-09T12:00:00Z', resueltoEn: null, ...datos };
+}
+
+describe('pendientes', () => {
+  // HOY = lunes 09-11-2026
+  it('filtra por semana (lunes a domingo)', () => {
+    expect(enPeriodo(pendiente({ fechaOrigen: '2026-11-09' }), 'semana', HOY)).toBe(true);
+    expect(enPeriodo(pendiente({ fechaOrigen: '2026-11-15' }), 'semana', HOY)).toBe(true);
+    expect(enPeriodo(pendiente({ fechaOrigen: '2026-11-06' }), 'semana', HOY)).toBe(false);
+    expect(enPeriodo(pendiente({ fechaOrigen: '2026-11-06' }), 'pasada', HOY)).toBe(true);
+    expect(enPeriodo(pendiente({ fechaOrigen: '2026-11-02' }), 'pasada', HOY)).toBe(true);
+    expect(enPeriodo(pendiente({ fechaOrigen: '2026-11-01' }), 'pasada', HOY)).toBe(false);
+    expect(enPeriodo(pendiente({ fechaOrigen: '2020-01-01' }), 'todos', HOY)).toBe(true);
+  });
+  it('cuenta los días pendiente', () => {
+    expect(diasPendiente(pendiente({ fechaOrigen: '2026-11-06' }), HOY)).toBe(3);
+    expect(textoDias(0)).toBe('hoy');
+    expect(textoDias(1)).toBe('hace 1 día');
+    expect(textoDias(3)).toBe('hace 3 días');
+  });
+  it('ordena: abiertos primero (el más antiguo arriba), luego los resueltos más recientes', () => {
+    const lista = [
+      pendiente({ id: 'r1', estado: 'resuelto', resueltoEn: '2026-11-08T10:00:00Z' }),
+      pendiente({ id: 'a2', fechaOrigen: '2026-11-08' }),
+      pendiente({ id: 'r2', estado: 'resuelto', resueltoEn: '2026-11-09T10:00:00Z' }),
+      pendiente({ id: 'a1', fechaOrigen: '2026-11-06' }),
+    ];
+    expect(ordenar(lista).map((p) => p.id)).toEqual(['a1', 'a2', 'r2', 'r1']);
+  });
+});
+
+import { distribuirColumnas } from '../src/lib/fechas.js';
+
+describe('camiones a la misma hora', () => {
+  it('van lado a lado y los que no se tapan ocupan todo el ancho', () => {
+    const c = distribuirColumnas([
+      camion({ id: 'a', horaInicio: '09:00', duracionMin: 60 }),
+      camion({ id: 'b', horaInicio: '09:00', duracionMin: 60 }),
+      camion({ id: 'c', horaInicio: '09:30', duracionMin: 60 }),
+      camion({ id: 'd', horaInicio: '12:00', duracionMin: 60 }),
+    ]);
+    expect(c.a).toEqual({ col: 0, cols: 3 });
+    expect(c.b).toEqual({ col: 1, cols: 3 });
+    expect(c.c).toEqual({ col: 2, cols: 3 });
+    expect(c.d).toEqual({ col: 0, cols: 1 });
+  });
+  it('reutiliza una columna libre', () => {
+    const c = distribuirColumnas([
+      camion({ id: 'a', horaInicio: '09:00', duracionMin: 120 }),
+      camion({ id: 'b', horaInicio: '09:00', duracionMin: 30 }),
+      camion({ id: 'c', horaInicio: '10:00', duracionMin: 30 }),
+    ]);
+    expect(c.c).toEqual({ col: 1, cols: 2 });
+  });
+  it('un camión corto ocupa al menos el alto mínimo', () => {
+    const c = distribuirColumnas([camion({ id: 'a', horaInicio: '09:00', duracionMin: 15 }), camion({ id: 'b', horaInicio: '09:15', duracionMin: 15 })], 24);
+    expect(c.b.cols).toBe(2);
+  });
+});

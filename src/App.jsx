@@ -4,6 +4,8 @@ import Lista from './pages/Lista.jsx';
 import Administracion from './pages/Administracion.jsx';
 import Porteria from './pages/Porteria.jsx';
 import Reportes from './pages/Reportes.jsx';
+import Pendientes from './pages/Pendientes.jsx';
+import { PendientesProvider, usePendientesObra } from './lib/pendientes.js';
 import ObrasModal from './components/ObrasModal.jsx';
 import PorCerrar from './components/PorCerrar.jsx';
 import { Button, Card } from './components/ui.jsx';
@@ -23,6 +25,7 @@ function minutosAhora() {
 const TABS = [
   { value: 'calendario', label: 'Calendario' },
   { value: 'lista', label: 'Lista / Imprimir' },
+  { value: 'pendientes', label: 'Pendientes' },
   { value: 'porteria', label: 'Portería', roles: ['porteria', 'editor', 'admin', 'superusuario'] },
   { value: 'reportes', label: 'Reportes' },
   { value: 'administracion', label: 'Administración' },
@@ -84,6 +87,7 @@ function Principal({ sesion }) {
     [logout],
   );
   useInactividad(cerrarPorInactividad);
+  const pendientes = usePendientesObra(obraActivaId);
   const autenticado = sesion.puedeEditar;
   const error = errorEventos || errorObras;
   const [tab, setTab] = useState(sesion.rol === 'porteria' ? 'porteria' : 'calendario');
@@ -114,6 +118,7 @@ function Principal({ sesion }) {
   const enPorteria = tab === 'porteria';
 
   return (
+    <PendientesProvider valor={pendientes}>
     <div className={`min-h-screen ${enPorteria ? 'bg-[#15171A]' : 'bg-papel'}`}>
       <header className="border-b border-tinta bg-white no-print">
         <div className="h-1.5 bg-rvc" />
@@ -139,6 +144,11 @@ function Principal({ sesion }) {
                   } ${tab === t.value ? 'bg-rvc font-bold text-white' : 'bg-white text-tinta hover:bg-[#FBEBEC]'}`}
                 >
                   {t.label}
+                  {t.value === 'pendientes' && pendientes.abiertos.length > 0 && (
+                    <span className={`ml-1.5 inline-block min-w-[22px] px-1 font-mono text-xs ${tab === t.value ? 'bg-white text-rvc' : 'bg-[#B07A1E] text-white'}`}>
+                      {pendientes.abiertos.length}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -233,7 +243,7 @@ function Principal({ sesion }) {
           <>
             {autenticado && !enPorteria && <PorCerrar obraId={obraActivaId} cambio={eventosDeObra} esAdmin={sesion.esAdmin} actualizar={actualizar} />}
 
-            <div className={`mb-5 grid grid-cols-2 border border-tinta bg-white no-print md:grid-cols-4 ${enPorteria || tab === 'reportes' ? 'hidden' : ''}`}>
+            <div className={`mb-5 grid grid-cols-2 border border-tinta bg-white no-print md:grid-cols-4 ${enPorteria || tab === 'reportes' || tab === 'pendientes' ? 'hidden' : ''}`}>
               <div className="border-b border-r border-gray-300 px-4 py-2 md:border-b-0">
                 <div className="font-mono text-[10px] text-gray-500">RECEPCIONES HOY</div>
                 <div className="text-2xl font-bold tabular-nums">{resumenHoy.recepciones}</div>
@@ -269,6 +279,7 @@ function Principal({ sesion }) {
               />
             )}
             {tab === 'reportes' && <Reportes obras={obras} obraActivaId={obraActivaId} />}
+            {tab === 'pendientes' && <Pendientes obraNombre={obraActiva?.nombre} puedeEditar={autenticado} esAdmin={sesion.esAdmin} />}
             {tab === 'calendario' && (
               <Calendario
                 eventos={eventosDeObra}
@@ -321,5 +332,6 @@ function Principal({ sesion }) {
         />
       )}
     </div>
+    </PendientesProvider>
   );
 }

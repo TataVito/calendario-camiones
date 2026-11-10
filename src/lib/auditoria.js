@@ -1,4 +1,4 @@
-import { estadoInfo, formaDescargaInfo, tipoInfo } from './useEventos.js';
+import { estadoInfo, formaDescargaInfo, marcaInfo, tipoInfo } from './useEventos.js';
 
 export const ACCIONES = [
   { value: 'crear', label: 'Creó', color: 'bg-transparent text-[#2E6B4F] border-[#2E6B4F]' },
@@ -10,7 +10,7 @@ export function accionInfo(value) {
   return ACCIONES.find((a) => a.value === value) || ACCIONES[1];
 }
 
-export const TABLAS = { eventos: 'Camión', obras: 'Obra', usuarios: 'Usuario', evento_fotos: 'Foto', evento_comentarios: 'Comentario' };
+export const TABLAS = { eventos: 'Camión', obras: 'Obra', usuarios: 'Usuario', evento_fotos: 'Foto', evento_comentarios: 'Comentario', pendientes: 'Pendiente' };
 
 // Columnas que se muestran en los cambios, con su etiqueta y cómo presentar el valor.
 const COLUMNAS = {
@@ -24,7 +24,7 @@ const COLUMNAS = {
   proveedor_cliente: { label: 'Proveedor / cliente' },
   material: { label: 'Recurso' },
   forma_descarga: { label: 'Forma de descarga', fmt: (v) => formaDescargaInfo(v).label },
-  estado: { label: 'Estado', fmt: (v) => estadoInfo(v).label },
+  estado: { label: 'Estado', fmt: (v) => ({ pendiente: 'Por llegar', resuelto: 'Llegó' })[v] || estadoInfo(v).label },
   observaciones: { label: 'Observaciones' },
   obra_id: { label: 'Obra' },
   usuario: { label: 'Usuario' },
@@ -37,6 +37,11 @@ const COLUMNAS = {
   ruta: { label: 'Archivo', fmt: (v) => v.split('/').pop() },
   texto: { label: 'Comentario' },
   ref_calendario: { label: 'Ref. calendario' },
+  descripcion: { label: 'Qué falta' },
+  cantidad: { label: 'Cantidad' },
+  proveedor: { label: 'Proveedor' },
+  nota: { label: 'Nota' },
+  marca: { label: 'Ícono', fmt: (v) => `${marcaInfo(v).icono} ${marcaInfo(v).label}`.trim() },
 };
 
 function fmt(col, v) {
@@ -73,6 +78,7 @@ export function resumen(entrada) {
   if (entrada.tabla === 'obras') return f.nombre || '';
   if (entrada.tabla === 'evento_fotos') return `Foto de guía (${f.subido_por_usuario || '—'})`;
   if (entrada.tabla === 'evento_comentarios') return `Comentario de ${f.autor_usuario || '—'}`;
+  if (entrada.tabla === 'pendientes') return `Pendiente: ${f.descripcion || '—'}${f.cantidad ? ` × ${f.cantidad}` : ''}`;
   return f.usuario || '';
 }
 

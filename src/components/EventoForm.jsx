@@ -3,7 +3,7 @@ import { Button, Field, Input, Select, Textarea } from './ui.jsx';
 import Autoria from './Autoria.jsx';
 import FotosGuia from './FotosGuia.jsx';
 import { desdeISO, hoyISO, sumarDias } from '../lib/fechas.js';
-import { ESTADOS, FORMAS_DESCARGA, RECURSOS_SUGERIDOS, TIPOS, horaFin, tipoInfo } from '../lib/useEventos.js';
+import { ESTADOS, FORMAS_DESCARGA, MARCAS, RECURSOS_SUGERIDOS, TIPOS, horaFin, nombreCamion, tipoInfo } from '../lib/useEventos.js';
 import { colorBase } from '../lib/materiales.js';
 
 const DURACIONES = [15, 30, 45, 60, 90, 120, 180];
@@ -42,6 +42,7 @@ function valoresIniciales(evento, fechaSugerida, horaSugerida, obraActivaId) {
     guiaOC: '',
     proveedorCliente: '',
     material: '',
+    marca: '',
     formaDescarga: 'manual',
     estado: 'programado',
     observaciones: '',
@@ -218,6 +219,30 @@ export default function EventoForm({ eventos = [], evento, fechaSugerida, horaSu
             ))}
           </Select>
         </Field>
+      </div>
+
+      <div className="block text-sm">
+        <span className="mb-1 block font-mono text-[11px] uppercase tracking-wide text-gray-500">Ícono en el calendario</span>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Ícono en el calendario">
+          {MARCAS.map((m) => {
+            const activo = (datos.marca || '') === m.value;
+            return (
+              <button
+                key={m.value || 'ninguno'}
+                type="button"
+                aria-pressed={activo}
+                onClick={() => set('marca', m.value)}
+                className={`min-h-[40px] border px-2.5 text-sm font-medium ${activo ? 'border-rvc bg-rvc text-white' : 'border-gray-300 text-tinta hover:border-tinta'}`}
+              >
+                {m.icono && <span className="mr-1">{m.icono}</span>}
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+        <span className="mt-1 block text-xs text-gray-500">
+          Se ve junto al material{datos.material && <> (así: <b>{nombreCamion(datos)}</b>)</>}. Con 🚚 se reconocen los que debe retirar la obra, para juntarlos en un viaje.
+        </span>
       </div>
 
       <Field label="N° de guía / orden de compra">

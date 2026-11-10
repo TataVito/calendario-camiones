@@ -100,3 +100,41 @@ export function cuadriculaMes(iso) {
   for (let i = 0; i < dias.length; i += 7) semanas.push(dias.slice(i, i + 7));
   return semanas;
 }
+
+// Reparte en columnas los bloques de un día que se tapan (mismo horario o muy cerca), para
+// dibujarlos lado a lado. `minimoMin`: alto mínimo de un bloque en minutos (los cortos se ven más
+// altos de lo que duran). Devuelve { [id]: { col, cols } }.
+export function distribuirColumnas(eventos, minimoMin = 0) {
+  const aMin = (hhmm) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const items = eventos
+    .map((ev) => {
+      const ini = aMin(ev.horaInicio);
+      return { id: ev.id, ini, fin: ini + Math.max(Number(ev.duracionMin) || 0, minimoMin) };
+    })
+    .sort((a, b) => a.ini - b.ini || b.fin - a.fin);
+  const salida = {};
+  let grupo = [];
+  let finGrupo = -1;
+  let columnas = []; // fin del último bloque de cada columna
+  const cerrarGrupo = () => {
+    for (const it of grupo) salida[it.id].cols = columnas.length;
+    grupo = [];
+    columnas = [];
+  };
+  for (const it of items) {
+    if (it.ini >= finGrupo) cerrarGrupo();
+    let col = columnas.findIndex((fin) => fin <= it.ini);
+    if (col === -1) {
+      col = columnas.length;
+      columnas.push(it.fin);
+    } else columnas[col] = it.fin;
+    salida[it.id] = { col, cols: 1 };
+    grupo.push(it);
+    finGrupo = Math.max(finGrupo, it.fin);
+  }
+  cerrarGrupo();
+  return salida;
+}

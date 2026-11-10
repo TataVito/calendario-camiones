@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Modal } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
-import { estadoInfo, formaDescargaInfo, horaFin, toMinutos, tipoInfo } from '../lib/useEventos.js';
+import { MARCAS, estadoInfo, formaDescargaInfo, horaFin, marcaInfo, nombreCamion, toMinutos, tipoInfo } from '../lib/useEventos.js';
 import { estiloMaterial, leerObservaciones } from '../lib/materiales.js';
+import { usePendientes } from '../lib/pendientes.js';
 import {
   cuadriculaMes,
   diasDeSemana,
@@ -18,6 +19,7 @@ import {
   primerDiaMes,
   sumarDias,
   sumarMeses,
+  distribuirColumnas,
 } from '../lib/fechas.js';
 
 const HORA_INICIO = 6;
@@ -26,6 +28,7 @@ const PX_POR_MIN = 1.1;
 const PX_POR_MIN_DIA = 1.7;
 const ALTO_TOTAL = (HORA_FIN - HORA_INICIO) * 60 * PX_POR_MIN;
 const ALTO_TOTAL_DIA = (HORA_FIN - HORA_INICIO) * 60 * PX_POR_MIN_DIA;
+const ALTO_MINIMO = 26; // px: un camión corto igual se ve con al menos este alto
 
 function capitalizar(texto) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
@@ -39,7 +42,7 @@ const ESTILOS_TIPO = {
 };
 
 function estiloEvento(ev) {
-  if (ev.estado === 'completado') return 'bg-transparent border-dashed border-gray-400 text-gray-500';
+  if (ev.estado === 'completado') return 'bg-white border-dashed border-gray-400 text-gray-500';
   if (ev.estado === 'en_proceso' || ev.estado === 'en_porteria') return 'bg-tinta border-tinta text-papel';
   if (ev.estado === 'incompleto') return 'bg-[#F6EBD4] border-dashed border-[#B07A1E] text-[#8A5A0B]';
   if (ev.estado === 'no_recibido') return 'bg-[#FBEBEC] border-dashed border-[#A8232A] text-[#A8232A]';
@@ -60,6 +63,17 @@ function ultimoComentario(ev) {
   return ev.ultimoComentario || leerObservaciones(ev.observaciones).comentarios.at(-1)?.texto || '';
 }
 
+// Nombre del camión con su ícono: si el nombre no cabe se corta, pero el ícono siempre se ve.
+function Nombre({ ev, respaldo, className = '' }) {
+  const { icono } = marcaInfo(ev.marca);
+  return (
+    <span className={`flex min-w-0 items-center gap-1 ${className}`}>
+      <span className="truncate">{ev.material || respaldo || tipoInfo(ev.tipo).label}</span>
+      {icono && <span className="shrink-0">{icono}</span>}
+    </span>
+  );
+}
+
 const PUNTO_TIPO = {
   recepcion: 'bg-tinta',
   despacho: 'bg-[#7A3E0C]',
@@ -72,6 +86,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
   const [semanaInicio, setSemanaInicio] = useState(() => inicioSemana(hoyISO()));
   const [mesReferencia, setMesReferencia] = useState(() => primerDiaMes(hoyISO()));
   const [modal, setModal] = useState(null); // { evento } | { fecha, hora } | null
+  const { abiertosPorEvento } = usePendientes();
 
   const dias = useMemo(() => diasDeSemana(semanaInicio), [semanaInicio]);
   const semanasMes = useMemo(() => cuadriculaMes(mesReferencia), [mesReferencia]);
@@ -83,16 +98,27 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
     onRango?.({ desde: rangoDesde, hasta: rangoHasta });
   }, [rangoDesde, rangoHasta, onRango]);
 
+  // Filtro por ícono (ej: solo los 🚚 que retira la obra, para ver qué se puede juntar).
+  const [soloMarca, setSoloMarca] = useState('');
+  const marcasEnVista = useMemo(() => {
+    const cuenta = {};
+    for (const ev of eventos) {
+      if (ev.marca && ev.estado !== 'cancelado' && ev.fecha >= rangoDesde && ev.fecha <= rangoHasta) cuenta[ev.marca] = (cuenta[ev.marca] || 0) + 1;
+    }
+    return MARCAS.filter((m) => m.value && (cuenta[m.value] || m.value === soloMarca)).map((m) => ({ ...m, cuenta: cuenta[m.value] || 0 }));
+  }, [eventos, rangoDesde, rangoHasta, soloMarca]);
+
   const eventosPorFecha = useMemo(() => {
     const mapa = {};
     for (const ev of eventos) {
+      if (soloMarca && ev.marca !== soloMarca) continue;
       (mapa[ev.fecha] ||= []).push(ev);
     }
     for (const fecha in mapa) {
       mapa[fecha].sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
     }
     return mapa;
-  }, [eventos]);
+  }, [eventos, soloMarca]);
 
   const horas = useMemo(() => Array.from({ length: HORA_FIN - HORA_INICIO + 1 }, (_, i) => HORA_INICIO + i), []);
 
@@ -212,10 +238,24 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
     cerrar();
   }
 
+  // Camiones que se tapan (mismo horario) van lado a lado, en columnas.
+  const columnas = useMemo(() => {
+    const px = vista === 'dia' ? PX_POR_MIN_DIA : PX_POR_MIN;
+    const salida = {};
+    for (const fecha in eventosPorFecha) Object.assign(salida, distribuirColumnas(eventosPorFecha[fecha], ALTO_MINIMO / px));
+    return salida;
+  }, [eventosPorFecha, vista]);
+
   function posicionEvento(ev, pxPorMin = PX_POR_MIN) {
     const inicioMin = toMinutos(ev.horaInicio) - HORA_INICIO * 60;
-    const alto = Math.max(ev.duracionMin * pxPorMin, 26);
-    return { top: `${inicioMin * pxPorMin}px`, height: `${alto}px` };
+    const alto = Math.max(ev.duracionMin * pxPorMin, ALTO_MINIMO);
+    const { col, cols } = columnas[ev.id] || { col: 0, cols: 1 };
+    return {
+      top: `${inicioMin * pxPorMin}px`,
+      height: `${alto}px`,
+      left: `calc(${(col * 100) / cols}% + ${col === 0 ? 4 : 1}px)`,
+      width: `calc(${100 / cols}% - ${cols === 1 ? 8 : col === 0 || col === cols - 1 ? 5 : 2}px)`,
+    };
   }
 
   function irAHoy() {
@@ -319,6 +359,27 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
           <span className="h-2.5 w-3.5 border border-dashed border-gray-400" /> ✓ Completado
         </span>
         <span>◆ Confirmado</span>
+        {marcasEnVista.length > 0 && (
+          <span className="inline-flex flex-wrap items-center gap-1.5 normal-case tracking-normal">
+            <span className="font-mono uppercase tracking-wide">Ver solo:</span>
+            {marcasEnVista.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                aria-pressed={soloMarca === m.value}
+                onClick={() => setSoloMarca((s) => (s === m.value ? '' : m.value))}
+                className={`min-h-[32px] border px-2 font-sans text-xs font-medium ${soloMarca === m.value ? 'border-rvc bg-rvc text-white' : 'border-tinta bg-white text-tinta hover:bg-tinta/5'}`}
+              >
+                {m.icono} {m.label} · {m.cuenta}
+              </button>
+            ))}
+            {soloMarca && (
+              <button type="button" onClick={() => setSoloMarca('')} className="min-h-[32px] px-1 font-sans text-xs text-gray-600 underline">
+                Ver todos
+              </button>
+            )}
+          </span>
+        )}
       </div>
 
       {vista === 'dia' && (
@@ -365,7 +426,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       e.stopPropagation();
                       abrirSiNoSeArrastro(ev);
                     }}
-                    className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                    className={`absolute z-10 hover:z-20 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-2 py-1 text-left text-xs leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                     style={{ ...posicionEvento(ev, PX_POR_MIN_DIA), ...colorEvento(ev) }}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -373,10 +434,10 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                         <span className="font-mono font-normal">{ev.horaInicio}–{horaFin(ev)}</span> · {tipoInfo(ev.tipo).label}
                       </span>
                       <span className="font-mono text-[10px] uppercase">
-                        {MARCA_ESTADO[ev.estado]} {estado.label}
+                        {abiertosPorEvento[ev.id] ? '📋 ' : ''}{MARCA_ESTADO[ev.estado]} {estado.label}
                       </span>
                     </div>
-                    {ev.material && <div className="truncate text-sm font-bold">{ev.material}</div>}
+                    {(ev.material || ev.marca) && <Nombre ev={ev} className="text-sm font-bold" />}
                     {ultimoComentario(ev) && <div className="truncate italic">💬 {ultimoComentario(ev)}</div>}
                     <div className="truncate opacity-80">
                       {[ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente && `${esProveedor ? 'Proveedor' : 'Cliente'}: ${ev.proveedorCliente}`, ev.formaDescarga && formaDescargaInfo(ev.formaDescarga).label]
@@ -448,13 +509,13 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                         e.stopPropagation();
                         abrirSiNoSeArrastro(ev);
                       }}
-                      className={`absolute left-1 right-1 z-10 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
+                      className={`absolute z-10 hover:z-20 ${sePuedeMover(ev) ? 'cursor-grab select-none active:cursor-grabbing' : ''} overflow-hidden border px-1.5 py-1 text-left text-[11px] leading-tight hover:shadow-md ${estiloTipo} ${ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''}`}
                       style={{ ...posicionEvento(ev), ...colorEvento(ev) }}
                     >
                       <div className="font-mono text-[10px]">
-                        {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[ev.estado]} {ultimoComentario(ev) && '💬'}
+                        {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[ev.estado]} {ultimoComentario(ev) && '💬'}{abiertosPorEvento[ev.id] ? '📋' : ''}
                       </div>
-                      <div className="truncate font-bold">{ev.material || tipoInfo(ev.tipo).label}</div>
+                      <Nombre ev={ev} className="font-bold" />
                       {ev.proveedorCliente && <div className="truncate opacity-80">{ev.proveedorCliente}</div>}
                       <span className="sr-only">{estado.label}</span>
                     </button>
@@ -516,11 +577,11 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                             ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''
                           } ${estiloEvento(ev)}`}
                           style={colorEvento(ev)}
-                          title={[ev.material, ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente, estadoInfo(ev.estado).label, ultimoComentario(ev) && `💬 ${ultimoComentario(ev)}`].filter(Boolean).join(' · ')}
+                          title={[(ev.material || ev.marca) && nombreCamion(ev), ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente, estadoInfo(ev.estado).label, ultimoComentario(ev) && `💬 ${ultimoComentario(ev)}`].filter(Boolean).join(' · ')}
                         >
                           <span className={`h-1.5 w-1.5 shrink-0 ${PUNTO_TIPO[ev.tipo] || PUNTO_TIPO.recepcion}`} />
                           <span className="shrink-0 font-mono">{ev.horaInicio}</span>
-                          <span className="truncate font-semibold">{ev.material || ev.proveedorCliente || tipoInfo(ev.tipo).label}</span>
+                          <Nombre ev={ev} respaldo={ev.proveedorCliente} className="font-semibold" />
                         </button>
                       ))}
                       {restantes > 0 && (

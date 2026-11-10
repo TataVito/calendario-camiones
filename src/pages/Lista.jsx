@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Field, Input, Modal, Select } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
-import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, tipoInfo } from '../lib/useEventos.js';
+import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, nombreCamion, tipoInfo } from '../lib/useEventos.js';
 import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 import { exportarExcel } from '../lib/exportarExcel.js';
 import ImportarCalendario from '../components/ImportarCalendario.jsx';
@@ -168,7 +168,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
                   <td className="px-3 py-2 whitespace-nowrap">{tipoInfo(ev.tipo).label}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{ev.guiaOC}</td>
                   <td className="px-3 py-2">{ev.proveedorCliente}</td>
-                  <td className="px-3 py-2">{ev.material}</td>
+                  <td className="px-3 py-2">{(ev.material || ev.marca) && nombreCamion(ev)}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{formaDescargaInfo(ev.formaDescarga).label}</td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full border px-2 py-0.5 text-xs ${est.color}`}>{est.label}</span>

@@ -19,6 +19,7 @@ const CAMPOS = {
   choqueAceptado: 'choque_aceptado',
   serieId: 'serie_id',
   refCalendario: 'ref_calendario',
+  marca: 'marca',
 };
 
 export function aEvento(fila) {
@@ -70,6 +71,26 @@ export const FORMAS_DESCARGA = [
   { value: 'bomba_hormigon', label: 'Bomba de hormigón' },
   { value: 'otro', label: 'Otro' },
 ];
+
+// Ícono que se ve junto al material en el calendario (ej: "Poliestirenos 🚚").
+export const MARCAS = [
+  { value: '', icono: '', label: 'Sin ícono' },
+  { value: 'retira_obra', icono: '🚚', label: 'Retira la obra' },
+  { value: 'consolidar', icono: '📦', label: 'Para juntar con otro' },
+  { value: 'urgente', icono: '⚡', label: 'Urgente' },
+  { value: 'revisar', icono: '⚠️', label: 'Revisar' },
+];
+
+export function marcaInfo(value) {
+  return MARCAS.find((m) => m.value === (value || '')) || MARCAS[0];
+}
+
+// Nombre que se muestra en el calendario: material (o lo que haya) + ícono.
+export function nombreCamion(ev, respaldo) {
+  const nombre = ev.material || respaldo || tipoInfo(ev.tipo).label;
+  const { icono } = marcaInfo(ev.marca);
+  return icono ? `${nombre} ${icono}` : nombre;
+}
 
 export function formaDescargaInfo(value) {
   return FORMAS_DESCARGA.find((f) => f.value === value) || FORMAS_DESCARGA[0];

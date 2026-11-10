@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import FotosGuia from '../components/FotosGuia.jsx';
-import { ESTADOS_CERRADOS, estadoInfo, formaDescargaInfo, hoyChile, horaFin, tipoInfo, toMinutos } from '../lib/useEventos.js';
+import { ESTADOS_CERRADOS, estadoInfo, formaDescargaInfo, hoyChile, horaFin, nombreCamion, tipoInfo, toMinutos } from '../lib/useEventos.js';
 import { TOLERANCIA_MIN, atrasoMin, atrasoTexto, duracionTexto, horaChile, tiempoEnObraMin } from '../lib/tiempos.js';
 
 // Estilo "Faena" con la marca RVC: oscuro, alto contraste, rojo corporativo y botones grandes,
@@ -70,7 +70,7 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
 
       <div>
         <div className="font-faenacond text-xl font-bold uppercase leading-tight">
-          {tipoInfo(ev.tipo).label} · {ev.material || ev.proveedorCliente || 'Sin detalle'}
+          {tipoInfo(ev.tipo).label} · {nombreCamion(ev, ev.proveedorCliente || 'Sin detalle')}
         </div>
         <div className="text-sm text-[#A3A7AD]">
           {[ev.material && ev.proveedorCliente, ev.guiaOC && `Guía ${ev.guiaOC}`, formaDescargaInfo(ev.formaDescarga).label].filter(Boolean).join(' · ')}
