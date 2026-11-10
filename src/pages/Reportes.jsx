@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase.js';
 import { aEvento, hoyChile } from '../lib/useEventos.js';
 import { atrasoMin, duracionTexto, esPuntual, promedio, tiempoDescargaMin, tiempoEnObraMin, TOLERANCIA_MIN } from '../lib/tiempos.js';
 import { desdeISO, sumarDias } from '../lib/fechas.js';
+import { claveNombre, nombreMasUsado } from '../lib/nombres.js';
 
 const PAGINA = 1000;
 
@@ -59,10 +60,17 @@ function indicadores(lista) {
 }
 
 function agrupar(lista, clave) {
-  const grupos = {};
-  for (const ev of lista) (grupos[clave(ev) || '(sin dato)'] ||= []).push(ev);
-  return Object.entries(grupos)
-    .map(([nombre, evs]) => ({ nombre, ...indicadores(evs) }))
+  const grupos = new Map();
+  for (const ev of lista) {
+    const nombre = clave(ev)?.trim().replace(/\s+/g, ' ') || '(sin dato)';
+    const k = claveNombre(nombre);
+    if (!grupos.has(k)) grupos.set(k, { formas: {}, evs: [] });
+    const g = grupos.get(k);
+    g.formas[nombre] = (g.formas[nombre] || 0) + 1;
+    g.evs.push(ev);
+  }
+  return [...grupos.values()]
+    .map(({ formas, evs }) => ({ nombre: nombreMasUsado(formas), ...indicadores(evs) }))
     .sort((a, b) => b.camiones - a.camiones);
 }
 
@@ -80,16 +88,24 @@ function colorCumplimiento(f) {
 
 // Agrupa por proveedor y material a la vez.
 function agruparProveedorMaterial(lista) {
+  const limpio = (t) => t?.trim().replace(/\s+/g, ' ') || '(sin dato)';
   const grupos = new Map();
   for (const ev of lista) {
-    const proveedor = ev.proveedorCliente?.trim() || '(sin dato)';
-    const material = ev.material?.trim() || '(sin dato)';
-    const clave = JSON.stringify([proveedor, material]);
-    if (!grupos.has(clave)) grupos.set(clave, { proveedor, material, evs: [] });
-    grupos.get(clave).evs.push(ev);
+    const proveedor = limpio(ev.proveedorCliente);
+    const material = limpio(ev.material);
+    const clave = JSON.stringify([claveNombre(proveedor), claveNombre(material)]);
+    if (!grupos.has(clave)) grupos.set(clave, { proveedores: {}, materiales: {}, evs: [] });
+    const g = grupos.get(clave);
+    g.proveedores[proveedor] = (g.proveedores[proveedor] || 0) + 1;
+    g.materiales[material] = (g.materiales[material] || 0) + 1;
+    g.evs.push(ev);
   }
   return [...grupos.values()]
-    .map(({ proveedor, material, evs }) => ({ nombre: `${proveedor} · ${material}`, proveedor, material, ...indicadores(evs) }))
+    .map(({ proveedores, materiales, evs }) => {
+      const proveedor = nombreMasUsado(proveedores);
+      const material = nombreMasUsado(materiales);
+      return { nombre: `${proveedor} · ${material}`, proveedor, material, ...indicadores(evs) };
+    })
     .sort((a, b) => b.camiones - a.camiones);
 }
 

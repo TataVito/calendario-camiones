@@ -258,3 +258,22 @@ describe('camiones a la misma hora', () => {
     expect(c.b.cols).toBe(2);
   });
 });
+
+describe('nombres de proveedor escritos distinto', async () => {
+  const { claveNombre, nombreMasUsado } = await import('../src/lib/nombres.js');
+  it('Sodimac, SODIMAC y Sodimac S.A. son el mismo', () => {
+    const k = claveNombre('Sodimac');
+    expect(claveNombre('SODIMAC')).toBe(k);
+    expect(claveNombre('  sodimac  ')).toBe(k);
+    expect(claveNombre('Sodimac S.A.')).toBe(k);
+    expect(claveNombre('Sodimac SpA')).toBe(k);
+    expect(claveNombre('Construmart')).not.toBe(k);
+  });
+  it('tildes y espacios no separan', () => {
+    expect(claveNombre('Cerámica  Santiago')).toBe(claveNombre('CERAMICA SANTIAGO'));
+  });
+  it('muestra la forma más usada; en empate, la que no está en mayúsculas', () => {
+    expect(nombreMasUsado({ SODIMAC: 5, Sodimac: 2 })).toBe('SODIMAC');
+    expect(nombreMasUsado({ SODIMAC: 2, Sodimac: 2 })).toBe('Sodimac');
+  });
+});
