@@ -358,6 +358,21 @@ export function useEventos(obraId, rango) {
     [recargar, claveLocal],
   );
 
+  // Recepción deshace su último paso (salida, inicio o llegada) si se equivocó. Necesita conexión.
+  const deshacerPorteria = useCallback(
+    async (id) => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        setError('Sin conexión: para deshacer un paso hace falta señal.');
+        return false;
+      }
+      const { error } = await supabase.rpc('deshacer_porteria', { p_evento: id });
+      if (error) setError(esErrorDeRed(error) ? 'Sin conexión: no se pudo deshacer. Inténtalo cuando vuelva la señal.' : error.message);
+      await recargar();
+      return !error;
+    },
+    [recargar],
+  );
+
   // Recepción marca Completo o Incompleto (función de la base; necesita conexión).
   const cerrarRecepcion = useCallback(
     async (id, estado) => {
@@ -393,6 +408,7 @@ export function useEventos(obraId, rango) {
     eliminarSerieDesde,
     marcarPorteria,
     cerrarRecepcion,
+    deshacerPorteria,
     buscarConflictos,
     recargar,
     sinSenal,

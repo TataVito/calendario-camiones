@@ -91,13 +91,32 @@ function ComentariosRecepcion({ ev, onCerrar }) {
   );
 }
 
-function TarjetaCamion({ ev, ahora, marcar, cerrar, puedeComentar, puedeSubirFotos, puedeBorrarFotos }) {
+// Último paso registrado, para poder deshacerlo si fue un error.
+function ultimoPaso(ev) {
+  if (ev.salidaReal) return { label: 'Terminó y salió', hora: ev.salidaReal };
+  if (ev.inicioProcesoReal) return { label: 'Empezó descarga / carga', hora: ev.inicioProcesoReal };
+  if (ev.llegadaReal) return { label: 'Llegó a recepción', hora: ev.llegadaReal };
+  return null;
+}
+
+function TarjetaCamion({ ev, ahora, marcar, cerrar, deshacer, puedeComentar, puedeSubirFotos, puedeBorrarFotos, esAdmin }) {
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [verFotos, setVerFotos] = useState(false);
   const [cerrando, setCerrando] = useState(null); // estado que se está enviando
   const [confirmaCompleto, setConfirmaCompleto] = useState(false);
   const [comentando, setComentando] = useState(false);
+  const [deshaciendo, setDeshaciendo] = useState(''); // '' | 'confirmar' | 'enviando'
+  const ultimo = ultimoPaso(ev);
+  const puedeDeshacer = deshacer && ultimo && ev.estado !== 'cancelado' && (ev.estado !== 'completado' || esAdmin);
+
+  async function pulsarDeshacer() {
+    if (deshaciendo !== 'confirmar') return setDeshaciendo('confirmar');
+    setDeshaciendo('enviando');
+    await deshacer(ev.id);
+    setDeshaciendo('');
+    setConfirmando(false);
+  }
   const siguiente = siguientePaso(ev);
   const visible = estadoVisible(ev);
   const est = estadoInfo(visible);
@@ -170,13 +189,34 @@ function TarjetaCamion({ ev, ahora, marcar, cerrar, puedeComentar, puedeSubirFot
             confirmando ? 'bg-[#FF5A4E] text-[#2B0703] hover:bg-[#FF7A70]' : siguiente.estilo
           }`}
         >
-          {enviando ? 'Registrando…' : confirmando ? '¿Confirmar salida? No se podrá modificar' : siguiente.label}
+          {enviando ? 'Registrando…' : confirmando ? '¿Confirmar salida?' : siguiente.label}
         </button>
       )}
       {confirmando && (
         <button onClick={() => setConfirmando(false)} className="min-h-[44px] w-full text-sm text-[#C9CCD1] underline">
           Cancelar
         </button>
+      )}
+
+      {puedeDeshacer && !confirmando && (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={pulsarDeshacer}
+            disabled={deshaciendo === 'enviando'}
+            className={`min-h-[44px] rounded-md px-3 text-sm font-semibold disabled:opacity-50 ${deshaciendo === 'confirmar' ? 'bg-[#FF9A3D] text-[#2B1503]' : 'border border-[#3A3F46] text-[#C9CCD1]'}`}
+          >
+            {deshaciendo === 'enviando'
+              ? 'Deshaciendo…'
+              : deshaciendo === 'confirmar'
+                ? `¿Deshacer «${ultimo.label}» de las ${horaChile(ultimo.hora)}?`
+                : `↩ Deshacer «${ultimo.label}»`}
+          </button>
+          {deshaciendo === 'confirmar' && (
+            <button onClick={() => setDeshaciendo('')} className="min-h-[44px] text-sm text-[#C9CCD1] underline">
+              No
+            </button>
+          )}
+        </div>
       )}
 
       {cerrar && ev.llegadaReal && ['programado', 'confirmado', 'en_porteria', 'en_proceso', 'incompleto'].includes(ev.estado) && (
@@ -250,7 +290,7 @@ function TarjetaCamion({ ev, ahora, marcar, cerrar, puedeComentar, puedeSubirFot
   );
 }
 
-export default function Porteria({ eventos, obraNombre, marcarPorteria, cerrarRecepcion, puedeMarcar, rol }) {
+export default function Porteria({ eventos, obraNombre, marcarPorteria, cerrarRecepcion, deshacerPorteria, puedeMarcar, rol }) {
   const [ahora, setAhora] = useState(minutosAhoraChile);
   const [verTerminados, setVerTerminados] = useState(false);
 
@@ -299,6 +339,8 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, cerrarRe
             marcar={puedeMarcar ? marcarPorteria : null}
             cerrar={puedeMarcar ? cerrarRecepcion : null}
             puedeComentar={puedeMarcar}
+            deshacer={puedeMarcar ? deshacerPorteria : null}
+            esAdmin={rol === 'admin' || rol === 'superusuario'}
             puedeSubirFotos={puedeMarcar}
             puedeBorrarFotos={['editor', 'admin', 'superusuario'].includes(rol)}
           />
@@ -318,6 +360,8 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, cerrarRe
               marcar={null}
               cerrar={puedeMarcar ? cerrarRecepcion : null}
               puedeComentar={puedeMarcar}
+              deshacer={puedeMarcar ? deshacerPorteria : null}
+              esAdmin={rol === 'admin' || rol === 'superusuario'}
               puedeSubirFotos={puedeMarcar}
               puedeBorrarFotos={rol === 'admin' || rol === 'superusuario'}
             />

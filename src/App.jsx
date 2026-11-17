@@ -75,6 +75,7 @@ function Principal({ sesion }) {
     eliminarSerieDesde,
     marcarPorteria,
     cerrarRecepcion,
+    deshacerPorteria,
     buscarConflictos,
     recargar,
     sinSenal,
@@ -276,6 +277,7 @@ function Principal({ sesion }) {
                 obraNombre={obraActiva?.nombre}
                 marcarPorteria={marcarPorteria}
                 cerrarRecepcion={cerrarRecepcion}
+                deshacerPorteria={deshacerPorteria}
                 puedeMarcar={sesion.puedePorteria}
                 rol={sesion.rol}
               />
