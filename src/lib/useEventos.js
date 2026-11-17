@@ -358,6 +358,17 @@ export function useEventos(obraId, rango) {
     [recargar, claveLocal],
   );
 
+  // Recepción marca Completo o Incompleto (función de la base; necesita conexión).
+  const cerrarRecepcion = useCallback(
+    async (id, estado) => {
+      const { error } = await supabase.rpc('cerrar_recepcion', { p_evento: id, p_estado: estado });
+      if (error) setError(esErrorDeRed(error) ? 'Sin conexión: no se pudo marcar el estado. Inténtalo cuando vuelva la señal.' : error.message);
+      await recargar();
+      return !error;
+    },
+    [recargar],
+  );
+
   // Choques: se consultan en la base para esa fecha (no dependen de lo que haya cargado).
   const buscarConflictos = useCallback(async (candidato, excluirId) => {
     if (!candidato.fecha || !candidato.horaInicio || !candidato.obraId) return [];
@@ -381,6 +392,7 @@ export function useEventos(obraId, rango) {
     eliminar,
     eliminarSerieDesde,
     marcarPorteria,
+    cerrarRecepcion,
     buscarConflictos,
     recargar,
     sinSenal,

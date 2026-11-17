@@ -41,10 +41,12 @@ function minutosAhoraChile() {
   return h * 60 + m;
 }
 
-function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos }) {
+function TarjetaCamion({ ev, ahora, marcar, cerrar, puedeSubirFotos, puedeBorrarFotos }) {
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [verFotos, setVerFotos] = useState(false);
+  const [cerrando, setCerrando] = useState(null); // estado que se está enviando
+  const [confirmaCompleto, setConfirmaCompleto] = useState(false);
   const siguiente = siguientePaso(ev);
   const visible = estadoVisible(ev);
   const est = estadoInfo(visible);
@@ -126,6 +128,45 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
         </button>
       )}
 
+      {cerrar && ev.llegadaReal && ['programado', 'confirmado', 'en_porteria', 'en_proceso', 'incompleto'].includes(ev.estado) && (
+        <div className="flex flex-col gap-2">
+          <div className="text-xs uppercase tracking-[0.15em] text-[#A3A7AD]">¿Cómo llegó?</div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={async () => {
+                // Completo bloquea el camión (solo un administrador lo cambia): se confirma.
+                if (!confirmaCompleto) return setConfirmaCompleto(true);
+                setCerrando('completado');
+                await cerrar(ev.id, 'completado');
+                setCerrando(null);
+                setConfirmaCompleto(false);
+              }}
+              disabled={!!cerrando}
+              className={`min-h-[56px] rounded-md px-3 font-faenacond text-xl font-bold uppercase tracking-wide disabled:opacity-50 ${confirmaCompleto ? 'bg-[#7CD992] text-[#0B2413]' : 'border-2 border-[#7CD992] text-[#7CD992]'}`}
+            >
+              {cerrando === 'completado' ? 'Guardando…' : confirmaCompleto ? '¿Confirmar? No se podrá cambiar' : '✓ Completo'}
+            </button>
+            <button
+              onClick={async () => {
+                setConfirmaCompleto(false);
+                setCerrando('incompleto');
+                await cerrar(ev.id, 'incompleto');
+                setCerrando(null);
+              }}
+              disabled={!!cerrando || ev.estado === 'incompleto'}
+              className={`min-h-[56px] rounded-md px-3 font-faenacond text-xl font-bold uppercase tracking-wide disabled:opacity-60 ${ev.estado === 'incompleto' ? 'bg-[#FFB547] text-[#2B1A03]' : 'border-2 border-[#FFB547] text-[#FFB547]'}`}
+            >
+              {cerrando === 'incompleto' ? 'Guardando…' : '◐ Incompleto'}
+            </button>
+          </div>
+          {confirmaCompleto && (
+            <button onClick={() => setConfirmaCompleto(false)} className="min-h-[40px] text-sm text-[#C9CCD1] underline">
+              Cancelar
+            </button>
+          )}
+        </div>
+      )}
+
       {verFotos ? (
         <FotosGuia evento={ev} puedeSubir={puedeSubirFotos} puedeBorrar={puedeBorrarFotos} oscuro />
       ) : (
@@ -141,7 +182,7 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
   );
 }
 
-export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMarcar, rol }) {
+export default function Porteria({ eventos, obraNombre, marcarPorteria, cerrarRecepcion, puedeMarcar, rol }) {
   const [ahora, setAhora] = useState(minutosAhoraChile);
   const [verTerminados, setVerTerminados] = useState(false);
 
@@ -188,6 +229,7 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
             ev={ev}
             ahora={ahora}
             marcar={puedeMarcar ? marcarPorteria : null}
+            cerrar={puedeMarcar ? cerrarRecepcion : null}
             puedeSubirFotos={puedeMarcar}
             puedeBorrarFotos={['editor', 'admin', 'superusuario'].includes(rol)}
           />
@@ -205,6 +247,7 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
               ev={ev}
               ahora={ahora}
               marcar={null}
+              cerrar={puedeMarcar ? cerrarRecepcion : null}
               puedeSubirFotos={puedeMarcar}
               puedeBorrarFotos={rol === 'admin' || rol === 'superusuario'}
             />
