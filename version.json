@@ -1,0 +1,4 @@
+{
+  "mayor": 5,
+  "nota": "Número grande de la versión (v 5.x). Súbelo solo con un cambio grande: el segundo número vuelve a 0 y después suma 1 con cada commit publicado."
+}

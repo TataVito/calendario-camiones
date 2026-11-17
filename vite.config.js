@@ -1,20 +1,23 @@
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { defineConfig, loadEnv } from 'vite'
 
-// Versión que se ve al pie de la app: fecha de publicación (hora de Chile) + commit.
-// En GitHub Actions viene en GITHUB_SHA; en local se lee de git y se marca «local».
+// Versión que se ve al pie de la app: «v 5.3». El primer número está en version.json y se sube
+// a mano con cada cambio grande; el segundo cuenta los commits hechos después de esa subida, así
+// que suma 1 solo con cada corrección publicada. En local se agrega «· local».
 function versionApp() {
-  const fecha = new Date().toLocaleDateString('es-CL', { timeZone: 'America/Santiago', day: '2-digit', month: '2-digit', year: 'numeric' })
-  let commit = (process.env.GITHUB_SHA || '').slice(0, 7)
-  if (!commit) {
-    try {
-      commit = execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() + ' · local'
-    } catch {
-      commit = 'local'
-    }
+  const { mayor } = JSON.parse(readFileSync(new URL('./version.json', import.meta.url), 'utf8'))
+  const git = (cmd) => execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+  let menor = null
+  try {
+    const base = git('git log -1 --format=%H -- version.json')
+    menor = base ? Number(git(`git rev-list --count ${base}..HEAD`)) : 0
+  } catch {
+    // sin git: se muestra solo el número grande
   }
-  return `${fecha} · ${commit}`
+  const local = process.env.GITHUB_ACTIONS ? '' : ' · local'
+  return `v ${mayor}${menor === null ? '' : `.${menor}`}${local}`
 }
 
 // Solo en la versión publicada: política de seguridad de contenido (CSP). El navegador solo

@@ -319,7 +319,7 @@ function Principal({ sesion }) {
       </main>
 
       <footer className={`mx-auto max-w-7xl px-4 pb-4 pt-2 text-xs no-print ${enPorteria ? 'text-[#6B6F75]' : 'text-gray-500'}`}>
-        Versión {__VERSION_APP__}
+        {__VERSION_APP__}
       </footer>
 
       {sesion.esAdmin && (
