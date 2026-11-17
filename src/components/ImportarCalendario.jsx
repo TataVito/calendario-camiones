@@ -3,9 +3,10 @@ import { Button, Modal } from './ui.jsx';
 import { supabase } from '../lib/supabase.js';
 import { aEvento, hoyChile } from '../lib/useEventos.js';
 import { compararConAgendados, leerCalendarioHTML, observacionesDe } from '../lib/importarCalendario.js';
+import { leerPlanillaXLSX } from '../lib/importarPlanilla.js';
 import { etiquetaFechaLarga } from '../lib/fechas.js';
 
-// Botón + ventana para subir el "Calendario de despachos" (.html) de la obra.
+// Botón + ventana para subir el "Calendario de despachos" de la obra: el .html o la planilla .xlsx.
 // Muestra qué se va a agendar, mover o cancelar, y solo aplica lo marcado.
 export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
   const [abierto, setAbierto] = useState(false);
@@ -34,7 +35,7 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
     setArchivo(file.name);
     setTrabajando(true);
     try {
-      const despachos = leerCalendarioHTML(await file.text());
+      const despachos = /\.xlsx?$/i.test(file.name) ? await leerPlanillaXLSX(await file.arrayBuffer()) : leerCalendarioHTML(await file.text());
       const hoy = hoyChile();
       const { data, error: err } = await supabase.from('eventos').select('*').eq('obra_id', obraId).gte('fecha', hoy).limit(5000);
       if (err) throw new Error(err.message);
@@ -140,16 +141,24 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
       <Modal open={abierto} onClose={cerrar} title={`Importar calendario de despachos — ${obraNombre || 'obra'}`} wide>
         <div className="space-y-4 text-sm">
           <p className="text-gray-600">
-            Sube el archivo <b>.html</b> del calendario de despachos. Se agendan como recepción los despachos de hoy en adelante
-            que todavía no estén. Si vuelves a subir una versión nueva, los que cambiaron de fecha se mueven y no se duplican.
+            Sube el calendario de despachos: el archivo <b>.html</b> o la <b>planilla Excel</b> (.xlsx). Se agendan como recepción
+            los despachos de hoy en adelante que todavía no estén. Si vuelves a subir una versión nueva, los que cambiaron de fecha
+            se mueven y no se duplican.
+          </p>
+          <p className="text-gray-600">
+            ¿No tienes el HTML?{' '}
+            <a href={`${import.meta.env.BASE_URL}planilla-despachos.xlsx`} download className="font-medium text-[#D13038] underline">
+              ⬇ Descarga la planilla modelo
+            </a>
+            , llénala (una fila por material) y súbela aquí. La hoja «Instrucciones» explica cada columna.
           </p>
           <label className="inline-flex min-h-[40px] cursor-pointer items-center border border-tinta px-3.5 py-2 font-medium text-tinta hover:bg-tinta/5">
             📄 Elegir archivo…
-            <input type="file" accept=".html,.htm,text/html" className="hidden" onChange={elegirArchivo} disabled={trabajando} />
+            <input type="file" accept=".html,.htm,.xlsx,.xls,text/html" className="hidden" onChange={elegirArchivo} disabled={trabajando} />
           </label>
           {archivo && <span className="ml-3 font-mono text-xs text-gray-500">{archivo}</span>}
           {trabajando && <p className="text-gray-500">Procesando…</p>}
-          {error && <p className="border border-[#D13038] bg-[#D13038]/5 p-3 text-[#D13038]">{error}</p>}
+          {error && <p className="whitespace-pre-line border border-[#D13038] bg-[#D13038]/5 p-3 text-[#D13038]">{error}</p>}
 
           {plan && (
             <>
@@ -166,12 +175,12 @@ export default function ImportarCalendario({ obraId, obraNombre, onListo }) {
                 }
               />
               <Seccion
-                titulo={`Cambiaron de fecha: se mueven (${plan.movidos.length})`}
+                titulo={`Cambiaron de fecha u hora: se mueven (${plan.movidos.length})`}
                 items={plan.movidos}
                 clave={(x) => x.despacho.ref}
                 marcados={marcados}
                 alternar={alternar}
-                detalle={(x) => `antes ${etiquetaFechaLarga(x.evento.fecha)} → ${x.horaInicio}`}
+                detalle={(x) => `antes ${etiquetaFechaLarga(x.evento.fecha)} ${x.evento.horaInicio} → ${x.horaInicio}${x.choque ? ' · choca con otro camión' : ''}`}
               />
               <Seccion
                 titulo={`Cargados antes: quedan con nombre del material, su OC y cantidades (${plan.actualizar.length})`}

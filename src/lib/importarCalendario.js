@@ -134,7 +134,13 @@ function buscarHora(ocupados, duracion) {
   return { horaInicio: '09:00', choque: true };
 }
 
-const NO_TOCAR = new Set(['en_porteria', 'en_proceso', 'completado', 'incompleto', 'no_recibido', 'cancelado']);
+// La hora que trae la planilla se respeta; si choca con otro camión, queda como choque aceptado.
+function horaPedida(ocupados, horaInicio, duracion) {
+  const inicio = toMinutos(horaInicio);
+  return { horaInicio, choque: ocupados.some((o) => inicio < o.fin && o.inicio < inicio + duracion) };
+}
+
+const NO_TOCAR =new Set(['en_porteria', 'en_proceso', 'completado', 'incompleto', 'no_recibido', 'cancelado']);
 
 // Compara el archivo con los camiones de la obra (de hoy en adelante) y arma el plan:
 //   nuevos:   despachos que no están -> se agendan
@@ -148,6 +154,7 @@ export function compararConAgendados(despachos, eventos, hoy) {
   const usados = new Set();
   const plan = { nuevos: [], movidos: [], actualizar: [], iguales: [], pasados: [], sobran: [] };
   const reescritos = new Set();
+  const refsArchivo = new Set(despachos.map((d) => d.ref));
 
   const porRef = new Map();
   for (const ev of activos) {
@@ -172,7 +179,7 @@ export function compararConAgendados(despachos, eventos, hoy) {
     const previo = porRef.get(d.ref);
     if (previo) {
       usados.add(previo.id);
-      if (previo.fecha === d.fecha) plan.iguales.push({ despacho: d, evento: previo });
+      if (previo.fecha === d.fecha && (!d.hora || d.hora === previo.horaInicio)) plan.iguales.push({ despacho: d, evento: previo });
       else if (d.fecha < hoy || NO_TOCAR.has(previo.estado)) plan.iguales.push({ despacho: d, evento: previo, aviso: d.fecha < hoy ? 'nueva fecha ya pasó' : 'ya está en curso o cerrado' });
       else plan.movidos.push({ despacho: d, evento: previo });
       continue;
@@ -185,7 +192,9 @@ export function compararConAgendados(despachos, eventos, hoy) {
     // (ej. cerámica + porcelanato de ATIKA): por eso puede coincidir con más de un despacho.
     // Ese camión se reescribe con el formato del calendario (nombre del material, su OC y
     // cantidades); si juntaba varias OC, las demás quedan como camiones aparte.
-    const mismo = activos.find((ev) => !refDe(ev) && pareceElMismo(d, ev));
+    // También un camión importado de otro archivo (el HTML y después la planilla, o al revés):
+    // su referencia no está en este archivo, pero es el mismo día, OC o material.
+    const mismo = activos.find((ev) => (!refDe(ev) || !refsArchivo.has(refDe(ev))) && pareceElMismo(d, ev));
     if (mismo) {
       usados.add(mismo.id);
       if (NO_TOCAR.has(mismo.estado)) plan.iguales.push({ despacho: d, evento: mismo, aviso: 'ya está en curso o cerrado' });
@@ -203,7 +212,9 @@ export function compararConAgendados(despachos, eventos, hoy) {
   for (const item of [...plan.nuevos, ...plan.movidos]) {
     const fecha = item.despacho.fecha;
     const duracion = item.evento?.duracionMin || 60;
-    const { horaInicio, choque } = buscarHora(ocupados.get(fecha) || [], duracion);
+    const { horaInicio, choque } = item.despacho.hora
+      ? horaPedida(ocupados.get(fecha) || [], item.despacho.hora, duracion)
+      : buscarHora(ocupados.get(fecha) || [], duracion);
     item.horaInicio = horaInicio;
     item.choque = choque;
     ocupar(fecha, horaInicio, duracion);

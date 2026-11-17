@@ -277,3 +277,70 @@ describe('nombres de proveedor escritos distinto', async () => {
     expect(nombreMasUsado({ SODIMAC: 2, Sodimac: 2 })).toBe('Sodimac');
   });
 });
+
+describe('planilla de despachos (.xlsx)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const XLSX = await import('xlsx');
+  const { leerPlanillaFilas, leerFecha, leerHora } = await import('../src/lib/importarPlanilla.js');
+  const libro = XLSX.read(readFileSync(new URL('../public/planilla-despachos.xlsx', import.meta.url)));
+  const filasDe = (hoja) => XLSX.utils.sheet_to_json(libro.Sheets[hoja], { header: 1, raw: true, defval: '' });
+  const CAB = ['Fecha', 'Hora', 'Material', 'N° OC', 'Proveedor', 'Descripción', 'UM', 'Cantidad', 'Nota'];
+
+  it('la planilla modelo trae las hojas y la de Despachos va vacía', () => {
+    expect(libro.SheetNames.slice(0, 3)).toEqual(['Despachos', 'Instrucciones', 'Ejemplo']);
+    expect(filasDe('Despachos')[0]).toEqual(CAB);
+    expect(() => leerPlanillaFilas(filasDe('Despachos'))).toThrow(/no tiene despachos/);
+  });
+
+  it('lee la hoja Ejemplo: agrupa por camión y sigue filas de continuación', () => {
+    const d = leerPlanillaFilas(filasDe('Ejemplo'));
+    expect(d).toHaveLength(4);
+    expect(d[0]).toMatchObject({ fecha: '2026-11-18', hora: '09:30', material: 'Cerámica y Porcelanato', oc: '371-2654', proveedor: 'Proveedor A' });
+    expect(d[0].materiales).toHaveLength(3);
+    expect(d[0].materiales[1]).toEqual({ descripcion: 'Porcelanato blanco rectificado 30x60', um: 'M2', cantidad: '96' });
+    expect(d[0].nota).toBe('Descarga con grúa horquilla');
+    // La misma OC en dos fechas: dos camiones, con referencias distintas y estables.
+    const yeso = d.filter((x) => x.material === 'Yeso Cartón');
+    expect(yeso.map((x) => x.fecha)).toEqual(['2026-11-18', '2026-11-25']);
+    expect(yeso[0].ref).toBe('xlsx:oc-371-2603:yeso-carton');
+    expect(yeso[1].ref).toBe('xlsx:oc-371-2603:yeso-carton#2');
+    expect(d[3]).toMatchObject({ material: 'Puertas', hora: '14:00' });
+  });
+
+  it('fechas y horas escritas como texto', () => {
+    expect(leerFecha('18-11-2026')).toBe('2026-11-18');
+    expect(leerFecha('5/1/27')).toBe('2027-01-05');
+    expect(leerFecha('2026-11-18')).toBe('2026-11-18');
+    expect(leerFecha('31-02-2026')).toBe(null);
+    expect(leerFecha(46344)).toBe('2026-11-18');
+    expect(leerHora('9:30')).toBe('09:30');
+    expect(leerHora('14')).toBe('14:00');
+    expect(leerHora(0.5)).toBe('12:00');
+    expect(leerHora('25:00')).toBe(null);
+  });
+
+  it('avisa las filas con errores', () => {
+    const filas = [CAB, ['', '', 'Puertas', '', '', 'x', '', 1, ''], ['32-11-2026', '', 'Sifones', '', '', '', '', '', ''], [46344, 'tarde', 'Tinas', '', '', '', '', '', '']];
+    expect(() => leerPlanillaFilas(filas)).toThrow(/Fila 2: falta la fecha[\s\S]*Fila 3: la fecha «32-11-2026»[\s\S]*Fila 4: la hora «tarde»/);
+  });
+
+  it('respeta la hora de la planilla y marca el choque', () => {
+    const ev = camion({ id: 'a', horaInicio: '10:00', refCalendario: 'otro' });
+    const plan = compararConAgendados([despacho({ ref: 'x', material: 'Puertas', hora: '10:30' })], [ev], HOY);
+    expect(plan.nuevos[0]).toMatchObject({ horaInicio: '10:30', choque: true });
+  });
+
+  it('un camión del HTML se reconoce al subir después la planilla (mismo día y OC)', () => {
+    const ev = camion({ id: 'h', material: 'Yeso Cartón', guiaOC: '371-2603', refCalendario: 'd-20261109-yeso' });
+    const plan = compararConAgendados([despacho({ ref: 'xlsx:oc-371-2603:yeso-carton', material: 'Yeso Cartón', oc: '371-2603' })], [ev], HOY);
+    expect(plan.nuevos).toHaveLength(0);
+    expect(plan.sobran).toHaveLength(0);
+    expect(plan.actualizar[0].evento.id).toBe('h');
+  });
+
+  it('si solo cambió la hora, se mueve', () => {
+    const ev = camion({ id: 'p', horaInicio: '09:00', refCalendario: 'r1' });
+    const plan = compararConAgendados([despacho({ ref: 'r1', hora: '15:00' })], [ev], HOY);
+    expect(plan.movidos[0]).toMatchObject({ horaInicio: '15:00', choque: false });
+  });
+});
