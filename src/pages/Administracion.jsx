@@ -445,7 +445,7 @@ function ImportarLegado({ alTerminar }) {
   );
 }
 
-export default function Administracion({ perfil, esAdmin, esSuper, logout, obras }) {
+export default function Administracion({ perfil, esAdmin, esSuper, logout, obras, recargarCamiones }) {
   const [seccion, setSeccion] = useState('usuarios');
   return (
     <div className={`mx-auto space-y-4 ${seccion === 'historial' ? 'max-w-5xl' : 'max-w-2xl'}`}>
@@ -482,7 +482,7 @@ export default function Administracion({ perfil, esAdmin, esSuper, logout, obras
             ))}
           </nav>
           {seccion === 'usuarios' && <GestionUsuarios perfil={perfil} obras={obras} esSuper={esSuper} />}
-          {seccion === 'historial' && <Historial obras={obras} />}
+          {seccion === 'historial' && <Historial obras={obras} onRestaurado={recargarCamiones} />}
           {seccion === 'respaldo' && esSuper && <Respaldo />}
         </>
       ) : (

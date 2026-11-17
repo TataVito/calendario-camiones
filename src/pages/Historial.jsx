@@ -5,7 +5,53 @@ import { ACCIONES, TABLAS, accionInfo, cambios, fechaHora, resumen } from '../li
 
 const POR_PAGINA = 100;
 
-function Entrada({ h, nombreObra }) {
+// Un camión eliminado se puede restaurar desde aquí (admin de obra o súper usuario): vuelve con
+// sus datos, comentarios, fotos y pendientes. Lo hace la función restaurar_camion de la base.
+function BotonRestaurar({ h, onRestaurado }) {
+  const [paso, setPaso] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  async function restaurar() {
+    if (paso !== 'confirmar') return setPaso('confirmar');
+    setPaso('enviando');
+    const { data, error } = await supabase.rpc('restaurar_camion', { p_auditoria: h.id });
+    if (error) {
+      setPaso('');
+      return setMensaje(error.message);
+    }
+    const partes = [];
+    if (data?.comentarios) partes.push(`${data.comentarios} comentario(s)`);
+    if (data?.fotos) partes.push(`${data.fotos} foto(s)`);
+    if (data?.pendientes) partes.push(`${data.pendientes} pendiente(s)`);
+    setPaso('listo');
+    setMensaje(
+      `✓ Restaurado${partes.length ? ` con ${partes.join(', ')}` : ''}.` +
+        (data?.fotos_sin_archivo ? ` ${data.fotos_sin_archivo} foto(s) ya no estaban guardadas y no se pudieron recuperar.` : ''),
+    );
+    onRestaurado?.();
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      {paso !== 'listo' && (
+        <button
+          type="button"
+          onClick={restaurar}
+          disabled={paso === 'enviando'}
+          className={`min-h-[32px] border px-2 text-xs font-medium ${paso === 'confirmar' ? 'border-[#2E6B4F] bg-[#2E6B4F] text-white' : 'border-[#2E6B4F] text-[#2E6B4F] hover:bg-[#2E6B4F]/5'}`}
+        >
+          {paso === 'enviando' ? 'Restaurando…' : paso === 'confirmar' ? '¿Restaurar este camión? Confirmar' : '↩ Restaurar'}
+        </button>
+      )}
+      {paso === 'confirmar' && (
+        <button type="button" onClick={() => setPaso('')} className="text-xs text-gray-500 underline">
+          Cancelar
+        </button>
+      )}
+      {mensaje && <span className={`text-xs ${paso === 'listo' ? 'text-[#2E6B4F]' : 'text-[#A8232A]'}`}>{mensaje}</span>}
+    </span>
+  );
+}
+
+function Entrada({ h, nombreObra, onRestaurado }) {
   const lista = cambios(h, nombreObra);
   return (
     <li className="border-b border-gray-100 px-3 py-2 last:border-0">
@@ -16,6 +62,7 @@ function Entrada({ h, nombreObra }) {
         <span className="text-gray-500">{TABLAS[h.tabla]}</span>
         <span className="text-gray-800">{resumen(h)}</span>
         {h.tabla === 'eventos' && h.obra_id && <span className="text-xs text-gray-400">({nombreObra(h.obra_id)})</span>}
+        {h.tabla === 'eventos' && h.accion === 'eliminar' && <BotonRestaurar h={h} onRestaurado={onRestaurado} />}
       </div>
       {lista.length > 0 && (
         <ul className="ml-0 mt-1 text-xs text-gray-500">
@@ -36,7 +83,7 @@ function Entrada({ h, nombreObra }) {
   );
 }
 
-export default function Historial({ obras }) {
+export default function Historial({ obras, onRestaurado }) {
   const [filtros, setFiltros] = useState({ desde: '', hasta: '', usuario: '', obraId: '', accion: '', tabla: '' });
   const [entradas, setEntradas] = useState([]);
   const [hayMas, setHayMas] = useState(false);
@@ -137,7 +184,7 @@ export default function Historial({ obras }) {
       ) : (
         <ul className="rounded-lg border border-gray-200">
           {entradas.map((h) => (
-            <Entrada key={h.id} h={h} nombreObra={nombreObra} />
+            <Entrada key={h.id} h={h} nombreObra={nombreObra} onRestaurado={() => { onRestaurado?.(); cargar(0); }} />
           ))}
         </ul>
       )}

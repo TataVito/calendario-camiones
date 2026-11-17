@@ -229,7 +229,7 @@ function Principal({ sesion }) {
           </div>
         )}
         {tab === 'administracion' ? (
-          <Administracion {...sesion} obras={obras} />
+          <Administracion {...sesion} obras={obras} recargarCamiones={recargar} />
         ) : obras.length === 0 ? (
           <Card className="mx-auto mt-10 max-w-md p-6 text-center">
             <h2 className="mb-2 text-lg font-semibold text-gray-800">{sesion.esSuper ? 'Todavía no hay obras' : 'No tienes obras asignadas'}</h2>
