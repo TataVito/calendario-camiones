@@ -229,7 +229,7 @@ async function exportar(datos, nombre) {
     Cancelados: f.cancelados,
     Cumplimiento: f.cumplimiento,
     'Sin cerrar': f.sinCerrar,
-    'Con registro portería': f.conRegistro,
+    'Con registro recepción': f.conRegistro,
     Puntualidad: f.puntualidad,
     Atrasados: f.atrasados,
     'Atraso promedio (min)': f.atrasoProm === null ? '' : Math.round(f.atrasoProm),
@@ -366,7 +366,7 @@ export default function Reportes({ obras, obraActivaId }) {
       {t.conRegistro === 0 && eventos.length > 0 && (
         <p className="border border-[#B07A1E] bg-[#F6EBD4] text-[#5C3D06] px-3 py-2 text-sm">
           Todavía no hay horas reales registradas en este período: la puntualidad y los tiempos se calculan con los
-          registros de la pestaña Portería.
+          registros de la pestaña Recepción.
         </p>
       )}
 

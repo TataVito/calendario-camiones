@@ -1,24 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import FotosGuia from '../components/FotosGuia.jsx';
-import { ESTADOS_CERRADOS, estadoInfo, formaDescargaInfo, hoyChile, horaFin, nombreCamion, tipoInfo, toMinutos } from '../lib/useEventos.js';
+import { ESTADOS_CERRADOS, enRecepcion, estadoInfo, estadoVisible, formaDescargaInfo, hoyChile, horaFin, nombreCamion, tipoInfo, toMinutos } from '../lib/useEventos.js';
 import { TOLERANCIA_MIN, atrasoMin, atrasoTexto, duracionTexto, horaChile, tiempoEnObraMin } from '../lib/tiempos.js';
 
 // Estilo "Faena" con la marca RVC: oscuro, alto contraste, rojo corporativo y botones grandes,
 // para usar en terreno con el celular. El atraso va en naranja para no confundirse con la marca.
 
-// Siguiente paso de portería según el estado del camión.
+// Recepción solo anota horas (llegada, inicio, salida); el estado de cierre lo pone la obra.
 const PASOS = {
-  programado: { paso: 'llego', label: 'Llegó a portería', estilo: 'bg-[#F2F0EA] text-[#15171A] hover:bg-white' },
-  confirmado: { paso: 'llego', label: 'Llegó a portería', estilo: 'bg-[#F2F0EA] text-[#15171A] hover:bg-white' },
-  en_porteria: { paso: 'inicio', label: 'Empezó descarga / carga', estilo: 'bg-[#6CB4FF] text-[#0B1A2B] hover:bg-[#8CC5FF]' },
-  en_proceso: { paso: 'termino', label: 'Terminó y salió', estilo: 'bg-[#7CD992] text-[#0B2413] hover:bg-[#98E5AA]' },
+  llego: { paso: 'llego', label: 'Llegó a recepción', estilo: 'bg-[#F2F0EA] text-[#15171A] hover:bg-white' },
+  inicio: { paso: 'inicio', label: 'Empezó descarga / carga', estilo: 'bg-[#6CB4FF] text-[#0B1A2B] hover:bg-[#8CC5FF]' },
+  termino: { paso: 'termino', label: 'Terminó y salió', estilo: 'bg-[#7CD992] text-[#0B2413] hover:bg-[#98E5AA]' },
 };
+
+// Siguiente hora que falta anotar, según las horas ya registradas (no según el estado).
+function siguientePaso(ev) {
+  if (ev.estado === 'cancelado' || ev.salidaReal) return null;
+  if (!ev.llegadaReal) return ESTADOS_CERRADOS.includes(ev.estado) ? null : PASOS.llego;
+  if (!ev.inicioProcesoReal) return PASOS.inicio;
+  return PASOS.termino;
+}
+
+// Ya no se espera nada de Recepción: salió, o la obra lo cerró sin que llegara.
+const terminadoEnRecepcion = (ev) => !siguientePaso(ev);
 
 const ETIQUETA_ESTADO = {
   programado: 'bg-[#2E3238] text-[#C9CCD1]',
   confirmado: 'bg-[#2E3238] text-[#C9CCD1]',
   en_porteria: 'bg-[#6CB4FF] text-[#0B1A2B]',
   en_proceso: 'bg-[#E5484F] text-white',
+  salio: 'bg-[#2E3238] text-[#F2F0EA]',
   completado: 'bg-[#2E3238] text-[#7CD992]',
   incompleto: 'bg-[#2E3238] text-[#FFB547]',
   no_recibido: 'bg-[#2E3238] text-[#FF7A70]',
@@ -34,16 +45,17 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [verFotos, setVerFotos] = useState(false);
-  const siguiente = PASOS[ev.estado];
-  const est = estadoInfo(ev.estado);
+  const siguiente = siguientePaso(ev);
+  const visible = estadoVisible(ev);
+  const est = estadoInfo(visible);
   const atraso = atrasoMin(ev);
   const esperando = !ev.llegadaReal && (ev.estado === 'programado' || ev.estado === 'confirmado');
   const atrasadoAhora = esperando && ahora > toMinutos(ev.horaInicio) + TOLERANCIA_MIN;
-  const enObra = ev.estado === 'en_porteria' || ev.estado === 'en_proceso';
-  const terminado = ESTADOS_CERRADOS.includes(ev.estado);
+  const enObra = enRecepcion(ev);
+  const terminado = terminadoEnRecepcion(ev);
 
   async function pulsar() {
-    // "Terminó" deja el camión completado y bloqueado: se pide una segunda confirmación.
+    // La salida no se puede volver a anotar: se pide una segunda confirmación.
     if (siguiente.paso === 'termino' && !confirmando) return setConfirmando(true);
     setEnviando(true);
     await marcar(ev.id, siguiente.paso);
@@ -62,7 +74,7 @@ function TarjetaCamion({ ev, ahora, marcar, puedeSubirFotos, puedeBorrarFotos })
             Atrasado {duracionTexto(ahora - toMinutos(ev.horaInicio))}
           </span>
         ) : (
-          <span className={`rounded-sm px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${ETIQUETA_ESTADO[ev.estado] || ETIQUETA_ESTADO.programado}`}>
+          <span className={`rounded-sm px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${ETIQUETA_ESTADO[visible] || ETIQUETA_ESTADO.programado}`}>
             {est.label}
           </span>
         )}
@@ -143,16 +155,16 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, puedeMar
     () => eventos.filter((ev) => ev.fecha === hoy).sort((a, b) => a.horaInicio.localeCompare(b.horaInicio)),
     [eventos, hoy],
   );
-  const pendientes = deHoy.filter((ev) => !ESTADOS_CERRADOS.includes(ev.estado));
-  const enObra = deHoy.filter((ev) => ev.estado === 'en_porteria' || ev.estado === 'en_proceso');
-  const terminados = deHoy.filter((ev) => ESTADOS_CERRADOS.includes(ev.estado));
+  const pendientes = deHoy.filter((ev) => !terminadoEnRecepcion(ev));
+  const enObra = deHoy.filter(enRecepcion);
+  const terminados = deHoy.filter(terminadoEnRecepcion);
   const fecha = new Date(`${hoy}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
     <div className="-mx-4 min-h-[calc(100vh-180px)] bg-[#15171A] px-3 pb-8 pt-4 font-faena text-[#F2F0EA]">
       <div className="mx-auto flex max-w-2xl flex-col gap-3">
         <div className="flex flex-col gap-2 border-b border-[#2A2E33] px-1 pb-3">
-          <span className="text-xs uppercase tracking-[0.2em] text-[#A3A7AD]">Portería · {fecha}</span>
+          <span className="text-xs uppercase tracking-[0.2em] text-[#A3A7AD]">Recepción · {fecha}</span>
           <h2 className="font-faenacond text-3xl font-bold uppercase leading-none">{obraNombre}</h2>
           <div className="flex gap-5 text-sm text-[#C9CCD1]">
             <span>

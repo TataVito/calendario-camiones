@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Field, Input, Modal, Select } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
-import { ESTADOS, TIPOS, estadoInfo, formaDescargaInfo, horaFin, nombreCamion, tipoInfo } from '../lib/useEventos.js';
+import { ESTADOS, TIPOS, estadoInfo, estadoVisible, formaDescargaInfo, horaFin, nombreCamion, tipoInfo } from '../lib/useEventos.js';
 import { etiquetaFechaLarga, hoyISO } from '../lib/fechas.js';
 import { exportarExcel } from '../lib/exportarExcel.js';
 import ImportarCalendario from '../components/ImportarCalendario.jsx';
@@ -136,7 +136,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
             {exportando ? 'Generando…' : `📊 Exportar a Excel (${filtrados.length})`}
           </Button>
           <Button variant="secondary" onClick={() => window.print()}>
-            🖨️ Imprimir para portería
+            🖨️ Imprimir para recepción
           </Button>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default function Lista({ eventos, obraActivaId, obraNombre, autenticado, 
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtrados.map((ev) => {
-              const est = estadoInfo(ev.estado);
+              const est = estadoInfo(estadoVisible(ev));
               return (
                 <tr key={ev.id} className={ev.estado === 'cancelado' ? 'opacity-50' : ''}>
                   <td className="px-3 py-2 whitespace-nowrap">{ev.fecha}</td>

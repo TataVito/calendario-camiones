@@ -1,4 +1,4 @@
-import { estadoInfo, formaDescargaInfo, horaFin, marcaInfo, tipoInfo } from './useEventos.js';
+import { estadoInfo, estadoVisible, formaDescargaInfo, horaFin, marcaInfo, tipoInfo } from './useEventos.js';
 
 function aFecha(iso) {
   const [y, m, d] = iso.split('-').map(Number);
@@ -27,7 +27,7 @@ export async function exportarExcel(eventos, { obra, desde, hasta }) {
     Recurso: ev.material || '',
     Ícono: ev.marca ? `${marcaInfo(ev.marca).icono} ${marcaInfo(ev.marca).label}` : '',
     'Forma de descarga': formaDescargaInfo(ev.formaDescarga).label,
-    Estado: estadoInfo(ev.estado).label,
+    Estado: estadoInfo(estadoVisible(ev)).label,
     Observaciones: ev.observaciones || '',
     'Último comentario': ev.ultimoComentario || '',
     'Creado por': ev.creadoPorUsuario || '',

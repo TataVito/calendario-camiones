@@ -31,7 +31,7 @@ export default function Autoria({ evento }) {
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
       {evento.llegadaReal && (
         <div className="mb-1 text-sm text-gray-700">
-          Portería: llegó <b>{horaChile(evento.llegadaReal)}</b> ({atrasoTexto(atrasoMin(evento))})
+          Recepción: llegó <b>{horaChile(evento.llegadaReal)}</b> ({atrasoTexto(atrasoMin(evento))})
           {evento.inicioProcesoReal && (
             <>
               {' '}

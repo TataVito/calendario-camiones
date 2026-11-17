@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Modal } from '../components/ui.jsx';
 import EventoForm from '../components/EventoForm.jsx';
 import EventoDetalle from '../components/EventoDetalle.jsx';
-import { MARCAS, estadoInfo, formaDescargaInfo, horaFin, marcaInfo, nombreCamion, toMinutos, tipoInfo } from '../lib/useEventos.js';
+import { ESTADOS_CERRADOS, MARCAS, enRecepcion, estadoInfo, estadoVisible, formaDescargaInfo, horaFin, marcaInfo, nombreCamion, toMinutos, tipoInfo } from '../lib/useEventos.js';
 import { estiloMaterial, leerObservaciones } from '../lib/materiales.js';
 import { usePendientes } from '../lib/pendientes.js';
 import {
@@ -42,8 +42,8 @@ const ESTILOS_TIPO = {
 };
 
 function estiloEvento(ev) {
+  if (enRecepcion(ev) && !ESTADOS_CERRADOS.includes(ev.estado)) return 'bg-tinta border-tinta text-papel';
   if (ev.estado === 'completado') return 'bg-white border-dashed border-gray-400 text-gray-500';
-  if (ev.estado === 'en_proceso' || ev.estado === 'en_porteria') return 'bg-tinta border-tinta text-papel';
   if (ev.estado === 'incompleto') return 'bg-[#F6EBD4] border-dashed border-[#B07A1E] text-[#8A5A0B]';
   if (ev.estado === 'no_recibido') return 'bg-[#FBEBEC] border-dashed border-[#A8232A] text-[#A8232A]';
   if (ev.material) return '';
@@ -52,11 +52,11 @@ function estiloEvento(ev) {
 
 // Programados y confirmados llevan el color de su material, para reconocerlos de un vistazo.
 function colorEvento(ev) {
-  if (['completado', 'incompleto', 'no_recibido', 'en_proceso', 'en_porteria'].includes(ev.estado)) return undefined;
+  if (['completado', 'incompleto', 'no_recibido'].includes(ev.estado) || enRecepcion(ev)) return undefined;
   return estiloMaterial(ev.material);
 }
 
-const MARCA_ESTADO = { completado: '✓', incompleto: '◐', no_recibido: '✕', en_proceso: '●', en_porteria: '●', confirmado: '◆', cancelado: '✕', programado: '' };
+const MARCA_ESTADO = { completado: '✓', incompleto: '◐', no_recibido: '✕', en_proceso: '●', en_porteria: '●', confirmado: '◆', cancelado: '✕', programado: '', salio: '↗' };
 
 // Último comentario agregado desde la ficha (para mostrarlo en el bloque del camión).
 function ultimoComentario(ev) {
@@ -353,7 +353,9 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
           <span className="h-2.5 w-3.5 border border-[#7A3E0C] bg-[#F3DCC2]" /> Despacho
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-3.5 border border-tinta bg-tinta" /> ● En portería / descargando
+          <span className="h-2.5 w-3.5 border border-tinta bg-tinta" /> ● En recepción / descargando</span>
+          <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 border border-dashed border-tinta bg-white" /> ↗ Salió, falta cerrar
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-3.5 border border-dashed border-gray-400" /> ✓ Completado
@@ -414,7 +416,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
               ))}
 
               {eventosPorFecha[diaReferencia]?.map((ev) => {
-                const estado = estadoInfo(ev.estado);
+                const estado = estadoInfo(estadoVisible(ev));
                 const estiloTipo = estiloEvento(ev);
                 const esProveedor = ev.tipo === 'recepcion';
                 return (
@@ -434,7 +436,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                         <span className="font-mono font-normal">{ev.horaInicio}–{horaFin(ev)}</span> · {tipoInfo(ev.tipo).label}
                       </span>
                       <span className="font-mono text-[10px] uppercase">
-                        {abiertosPorEvento[ev.id] ? '📋 ' : ''}{MARCA_ESTADO[ev.estado]} {estado.label}
+                        {abiertosPorEvento[ev.id] ? '📋 ' : ''}{MARCA_ESTADO[estadoVisible(ev)]} {estado.label}
                       </span>
                     </div>
                     {(ev.material || ev.marca) && <Nombre ev={ev} className="text-sm font-bold" />}
@@ -498,7 +500,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                 ))}
 
                 {eventosPorFecha[dia]?.map((ev) => {
-                  const estado = estadoInfo(ev.estado);
+                  const estado = estadoInfo(estadoVisible(ev));
                   const estiloTipo = estiloEvento(ev);
                   return (
                     <button
@@ -513,7 +515,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                       style={{ ...posicionEvento(ev), ...colorEvento(ev) }}
                     >
                       <div className="font-mono text-[10px]">
-                        {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[ev.estado]} {ultimoComentario(ev) && '💬'}{abiertosPorEvento[ev.id] ? '📋' : ''}
+                        {ev.horaInicio}–{horaFin(ev)} {MARCA_ESTADO[estadoVisible(ev)]} {ultimoComentario(ev) && '💬'}{abiertosPorEvento[ev.id] ? '📋' : ''}
                       </div>
                       <Nombre ev={ev} className="font-bold" />
                       {ev.proveedorCliente && <div className="truncate opacity-80">{ev.proveedorCliente}</div>}
@@ -577,7 +579,7 @@ export default function Calendario({ eventos, obraActivaId, autenticado, esAdmin
                             ev.estado === 'cancelado' ? 'opacity-50 line-through' : ''
                           } ${estiloEvento(ev)}`}
                           style={colorEvento(ev)}
-                          title={[(ev.material || ev.marca) && nombreCamion(ev), ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente, estadoInfo(ev.estado).label, ultimoComentario(ev) && `💬 ${ultimoComentario(ev)}`].filter(Boolean).join(' · ')}
+                          title={[(ev.material || ev.marca) && nombreCamion(ev), ev.guiaOC && `OC ${ev.guiaOC}`, ev.proveedorCliente, estadoInfo(estadoVisible(ev)).label, ultimoComentario(ev) && `💬 ${ultimoComentario(ev)}`].filter(Boolean).join(' · ')}
                         >
                           <span className={`h-1.5 w-1.5 shrink-0 ${PUNTO_TIPO[ev.tipo] || PUNTO_TIPO.recepcion}`} />
                           <span className="shrink-0 font-mono">{ev.horaInicio}</span>

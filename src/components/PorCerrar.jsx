@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Modal } from './ui.jsx';
 import { supabase } from '../lib/supabase.js';
-import { aEvento, estadoInfo, hoyChile, horaFin, nombreCamion, tipoInfo } from '../lib/useEventos.js';
+import { aEvento, estadoInfo, estadoVisible, hoyChile, horaFin, nombreCamion, tipoInfo } from '../lib/useEventos.js';
 import { etiquetaFechaLarga } from '../lib/fechas.js';
 
 // Estados que, si el día ya pasó, significan que nadie anotó cómo terminó el camión.
@@ -86,7 +86,7 @@ export default function PorCerrar({ obraId, cambio, esAdmin, actualizar }) {
                 </div>
                 <div className="text-xs text-gray-500">
                   {etiquetaFechaLarga(ev.fecha)} · {ev.horaInicio}–{horaFin(ev)} · {tipoInfo(ev.tipo).label}
-                  {ev.guiaOC && ` · OC ${ev.guiaOC}`} · <span className="font-medium">{estadoInfo(ev.estado).label}</span>
+                  {ev.guiaOC && ` · OC ${ev.guiaOC}`} · <span className="font-medium">{estadoInfo(estadoVisible(ev)).label}</span>
                 </div>
               </div>
               <div className="flex shrink-0 flex-wrap gap-1.5">

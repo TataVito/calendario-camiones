@@ -9,7 +9,7 @@ import { PendientesProvider, usePendientesObra } from './lib/pendientes.js';
 import ObrasModal from './components/ObrasModal.jsx';
 import PorCerrar from './components/PorCerrar.jsx';
 import { Button, Card } from './components/ui.jsx';
-import { ESTADOS_CERRADOS, useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
+import { ESTADOS_CERRADOS, enRecepcion, useEventos, toMinutos, tipoInfo } from './lib/useEventos.js';
 import { useObras } from './lib/useObras.js';
 import { useSesion } from './lib/useSesion.js';
 import { LIMITE_INACTIVIDAD_MIN, useInactividad } from './lib/useInactividad.js';
@@ -26,7 +26,7 @@ const TABS = [
   { value: 'calendario', label: 'Calendario' },
   { value: 'lista', label: 'Lista / Imprimir' },
   { value: 'pendientes', label: 'Pendientes' },
-  { value: 'porteria', label: 'Portería', roles: ['porteria', 'editor', 'admin', 'superusuario'] },
+  { value: 'porteria', label: 'Recepción', roles: ['porteria', 'editor', 'admin', 'superusuario'] },
   { value: 'reportes', label: 'Reportes' },
   { value: 'administracion', label: 'Administración' },
 ];
@@ -100,7 +100,7 @@ function Principal({ sesion }) {
     const deHoy = eventosDeObra.filter((ev) => ev.fecha === hoyISO() && ev.estado !== 'cancelado');
     const recepciones = deHoy.filter((ev) => ev.tipo === 'recepcion').length;
     const despachos = deHoy.filter((ev) => ev.tipo === 'despacho').length;
-    const enProceso = deHoy.filter((ev) => ev.estado === 'en_proceso' || ev.estado === 'en_porteria').length;
+    const enProceso = deHoy.filter(enRecepcion).length;
     const ahora = minutosAhora();
     const proximo = deHoy
       .filter((ev) => !ESTADOS_CERRADOS.includes(ev.estado) && toMinutos(ev.horaInicio) >= ahora)
@@ -114,7 +114,7 @@ function Principal({ sesion }) {
     await recargar();
   }
 
-  const ROL_TXT = { lector: 'lector', porteria: 'portería', editor: 'editor', admin: 'admin de obra', superusuario: 'súper usuario' };
+  const ROL_TXT = { lector: 'lector', porteria: 'recepción', editor: 'editor', admin: 'admin de obra', superusuario: 'súper usuario' };
   const enPorteria = tab === 'porteria';
 
   return (
@@ -209,7 +209,7 @@ function Principal({ sesion }) {
           <div className={`mt-4 flex items-center gap-2 border px-3 py-2 text-sm no-print ${enPorteria ? 'border-[#FF9A3D] bg-[#2B1A08] text-[#FFD2A8]' : 'mb-4 border-[#B07A1E] bg-[#F6EBD4] text-[#5C3D06]'}`}>
             <b>{sinSenal ? 'Sin señal.' : 'Enviando…'}</b>
             {enCola > 0
-              ? `${enCola} marca(s) de portería guardadas en este equipo; se envían solas cuando vuelva la conexión.`
+              ? `${enCola} marca(s) de recepción guardadas en este equipo; se envían solas cuando vuelva la conexión.`
               : 'Estás viendo lo último que se cargó. Los cambios se mostrarán al volver la conexión.'}
           </div>
         )}

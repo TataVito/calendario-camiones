@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Textarea } from './ui.jsx';
 import Autoria from './Autoria.jsx';
 import FotosGuia from './FotosGuia.jsx';
-import { estadoInfo, formaDescargaInfo, horaFin, marcaInfo, nombreCamion, tipoInfo } from '../lib/useEventos.js';
+import { estadoInfo, estadoVisible, formaDescargaInfo, horaFin, marcaInfo, nombreCamion, tipoInfo } from '../lib/useEventos.js';
 import { colorBase, leerObservaciones } from '../lib/materiales.js';
 import { useComentarios } from '../lib/comentarios.js';
 import { usePendientes } from '../lib/pendientes.js';
@@ -30,7 +30,7 @@ const CIERRES = [
 // Con onActualizar (quien puede editar) se marca cómo quedó sin abrir el formulario.
 // Con puedeComentar se agregan comentarios (también en camiones completados).
 export default function EventoDetalle({ evento, onCerrar, onEditar, onActualizar, puedeComentar, esAdmin, completado, puedeSubirFotos }) {
-  const estado = estadoInfo(evento.estado);
+  const estado = estadoInfo(estadoVisible(evento));
   const esRecepcion = evento.tipo === 'recepcion';
   const { items, notas } = leerObservaciones(evento.observaciones);
   const { comentarios, agregar: agregarComentario, error: errorComentario } = useComentarios(evento);

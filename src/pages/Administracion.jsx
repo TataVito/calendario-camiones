@@ -7,7 +7,7 @@ import { descargarRespaldo } from '../lib/respaldo.js';
 
 const ROLES = [
   { value: 'lector', label: 'Lector — solo ve' },
-  { value: 'porteria', label: 'Portería — registra llegadas, salidas y fotos' },
+  { value: 'porteria', label: 'Recepción — registra llegadas, salidas y fotos' },
   { value: 'editor', label: 'Editor — agenda camiones y obras' },
   { value: 'admin', label: 'Admin de obra — sus obras: usuarios, historial y reglas' },
   { value: 'superusuario', label: 'Súper usuario — ve y administra todo' },

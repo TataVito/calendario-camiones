@@ -50,7 +50,7 @@ function aFila(datos) {
 export const ESTADOS = [
   { value: 'programado', label: 'Programado', color: 'bg-transparent text-gray-600 border-gray-400' },
   { value: 'confirmado', label: 'Confirmado', color: 'bg-[#D7E0F0] text-tinta border-tinta' },
-  { value: 'en_porteria', label: 'En portería', color: 'bg-tinta/10 text-tinta border-tinta' },
+  { value: 'en_porteria', label: 'En recepción', color: 'bg-tinta/10 text-tinta border-tinta' },
   { value: 'en_proceso', label: 'En proceso (carga/descarga)', color: 'bg-tinta text-papel border-tinta' },
   { value: 'completado', label: 'Completado', color: 'bg-transparent text-[#2E6B4F] border-[#2E6B4F] border-dashed' },
   { value: 'incompleto', label: 'Incompleto', color: 'bg-[#F6EBD4] text-[#8A5A0B] border-[#B07A1E]' },
@@ -108,12 +108,25 @@ export const RECURSOS_SUGERIDOS = [
   'Residuos / Escombros',
 ];
 
-// Estados que cierran el camión (ya no se espera en portería).
+// Estados que cierran el camión. Los pone la obra en la ficha; Recepción nunca los pone.
 export const ESTADOS_CERRADOS = ['completado', 'incompleto', 'no_recibido', 'cancelado'];
 
+// Solo para mostrar: el camión salió (Recepción anotó la salida) pero la obra aún no lo cierra.
+const SALIO = { value: 'salio', label: 'Salió · falta cerrar', color: 'bg-white text-tinta border-tinta border-dashed' };
+
 export function estadoInfo(value) {
+  if (value === 'salio') return SALIO;
   return ESTADOS.find((e) => e.value === value) || ESTADOS[0];
 }
+
+// Estado que se muestra: igual al guardado, salvo un camión abierto que ya salió.
+export function estadoVisible(ev) {
+  if (ev.salidaReal && !ESTADOS_CERRADOS.includes(ev.estado)) return 'salio';
+  return ev.estado;
+}
+
+// Camión que está dentro de la obra ahora (llegó y no ha salido).
+export const enRecepcion = (ev) => !!ev.llegadaReal && !ev.salidaReal && ev.estado !== 'cancelado';
 
 export function tipoInfo(value) {
   return TIPOS.find((t) => t.value === value) || TIPOS[0];
@@ -313,14 +326,16 @@ export function useEventos(obraId, rango) {
   const marcarPorteria = useCallback(
     async (id, paso) => {
       const marcarLocal = () => {
+        // Igual que marcar_porteria en la base: solo horas; nunca pone un estado de cierre.
         const ahora = new Date().toISOString();
-        const cambio = {
-          llego: { estado: 'en_porteria', llegadaReal: ahora },
-          inicio: { estado: 'en_proceso', inicioProcesoReal: ahora },
-          termino: { estado: 'completado', salidaReal: ahora },
-        }[paso];
+        const cambio = (ev) => {
+          const abierto = !ESTADOS_CERRADOS.includes(ev.estado);
+          if (paso === 'llego') return { llegadaReal: ahora, ...(['programado', 'confirmado'].includes(ev.estado) && { estado: 'en_porteria' }) };
+          if (paso === 'inicio') return { inicioProcesoReal: ahora, ...(abierto && { estado: 'en_proceso' }) };
+          return { salidaReal: ahora, inicioProcesoReal: ev.inicioProcesoReal || ahora, ...(abierto && { estado: 'en_proceso' }) };
+        };
         setEventos((prev) => {
-          const nuevos = prev.map((ev) => (ev.id === id ? { ...ev, ...cambio } : ev));
+          const nuevos = prev.map((ev) => (ev.id === id ? { ...ev, ...cambio(ev) } : ev));
           guardarLocal(claveLocal, nuevos);
           return nuevos;
         });
