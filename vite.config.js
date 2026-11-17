@@ -1,5 +1,21 @@
 import react from '@vitejs/plugin-react'
+import { execSync } from 'node:child_process'
 import { defineConfig, loadEnv } from 'vite'
+
+// Versión que se ve al pie de la app: fecha de publicación (hora de Chile) + commit.
+// En GitHub Actions viene en GITHUB_SHA; en local se lee de git y se marca «local».
+function versionApp() {
+  const fecha = new Date().toLocaleDateString('es-CL', { timeZone: 'America/Santiago', day: '2-digit', month: '2-digit', year: 'numeric' })
+  let commit = (process.env.GITHUB_SHA || '').slice(0, 7)
+  if (!commit) {
+    try {
+      commit = execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() + ' · local'
+    } catch {
+      commit = 'local'
+    }
+  }
+  return `${fecha} · ${commit}`
+}
 
 // Solo en la versión publicada: política de seguridad de contenido (CSP). El navegador solo
 // ejecuta código de la propia app y solo se conecta con Supabase. En desarrollo no se aplica
@@ -40,5 +56,6 @@ export default defineConfig(({ mode }) => {
   return {
     base: './',
     plugins: [react(), seguridadYApp(supabaseUrl)],
+    define: { __VERSION_APP__: JSON.stringify(versionApp()) },
   }
 })
