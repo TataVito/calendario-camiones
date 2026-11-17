@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import FotosGuia from '../components/FotosGuia.jsx';
+import { useComentarios } from '../lib/comentarios.js';
 import { ESTADOS_CERRADOS, enRecepcion, estadoInfo, estadoVisible, formaDescargaInfo, hoyChile, horaFin, nombreCamion, tipoInfo, toMinutos } from '../lib/useEventos.js';
 import { TOLERANCIA_MIN, atrasoMin, atrasoTexto, duracionTexto, horaChile, tiempoEnObraMin } from '../lib/tiempos.js';
 
@@ -41,12 +42,62 @@ function minutosAhoraChile() {
   return h * 60 + m;
 }
 
-function TarjetaCamion({ ev, ahora, marcar, cerrar, puedeSubirFotos, puedeBorrarFotos }) {
+// Comentarios del camión en la tarjeta de Recepción: los ya escritos y uno nuevo.
+// Autor y hora los pone la base; nadie puede editarlos.
+function ComentariosRecepcion({ ev, onCerrar }) {
+  const { comentarios, agregar, error } = useComentarios(ev);
+  const [texto, setTexto] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  async function guardar() {
+    if (!texto.trim()) return;
+    setGuardando(true);
+    const ok = await agregar(texto);
+    setGuardando(false);
+    if (ok) setTexto('');
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-md bg-[#15171A] p-3">
+      {comentarios.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm text-[#C9CCD1]">
+          {comentarios.map((c, i) => (
+            <li key={c.id || i}>
+              💬 <b className="text-[#F2F0EA]">{c.autor}</b> · {c.cuando} — {c.texto}
+            </li>
+          ))}
+        </ul>
+      )}
+      <textarea
+        rows={2}
+        maxLength={300}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Ej: faltaron 10 sacos de adhesivo"
+        className="w-full rounded-md border border-[#3A3F46] bg-[#1F2226] p-3 text-base text-[#F2F0EA] placeholder:text-[#6B6F75]"
+      />
+      {error && <p className="text-sm text-[#FF8A80]">No se pudo guardar: {error}</p>}
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={onCerrar} className="min-h-[48px] rounded-md border border-[#3A3F46] text-sm font-semibold uppercase tracking-wider text-[#C9CCD1]">
+          Cerrar
+        </button>
+        <button
+          onClick={guardar}
+          disabled={guardando || !texto.trim()}
+          className="min-h-[48px] rounded-md bg-[#F2F0EA] font-faenacond text-lg font-bold uppercase tracking-wide text-[#15171A] disabled:opacity-40"
+        >
+          {guardando ? 'Guardando…' : 'Guardar comentario'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TarjetaCamion({ ev, ahora, marcar, cerrar, puedeComentar, puedeSubirFotos, puedeBorrarFotos }) {
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [verFotos, setVerFotos] = useState(false);
   const [cerrando, setCerrando] = useState(null); // estado que se está enviando
   const [confirmaCompleto, setConfirmaCompleto] = useState(false);
+  const [comentando, setComentando] = useState(false);
   const siguiente = siguientePaso(ev);
   const visible = estadoVisible(ev);
   const est = estadoInfo(visible);
@@ -167,6 +218,23 @@ function TarjetaCamion({ ev, ahora, marcar, cerrar, puedeSubirFotos, puedeBorrar
         </div>
       )}
 
+      {comentando ? (
+        <ComentariosRecepcion ev={ev} onCerrar={() => setComentando(false)} />
+      ) : (
+        (puedeComentar || ev.ultimoComentario) && (
+          <button
+            onClick={() => setComentando(true)}
+            className="flex min-h-[40px] items-start gap-2 self-start text-left font-semibold text-[#FF7A80] hover:underline"
+          >
+            <span>💬</span>
+            <span>
+              {puedeComentar ? 'Comentarios' : 'Ver comentarios'}
+              {ev.ultimoComentario && <span className="block font-normal text-[#C9CCD1]">Último: {ev.ultimoComentario}</span>}
+            </span>
+          </button>
+        )
+      )}
+
       {verFotos ? (
         <FotosGuia evento={ev} puedeSubir={puedeSubirFotos} puedeBorrar={puedeBorrarFotos} oscuro />
       ) : (
@@ -230,6 +298,7 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, cerrarRe
             ahora={ahora}
             marcar={puedeMarcar ? marcarPorteria : null}
             cerrar={puedeMarcar ? cerrarRecepcion : null}
+            puedeComentar={puedeMarcar}
             puedeSubirFotos={puedeMarcar}
             puedeBorrarFotos={['editor', 'admin', 'superusuario'].includes(rol)}
           />
@@ -248,6 +317,7 @@ export default function Porteria({ eventos, obraNombre, marcarPorteria, cerrarRe
               ahora={ahora}
               marcar={null}
               cerrar={puedeMarcar ? cerrarRecepcion : null}
+              puedeComentar={puedeMarcar}
               puedeSubirFotos={puedeMarcar}
               puedeBorrarFotos={rol === 'admin' || rol === 'superusuario'}
             />
